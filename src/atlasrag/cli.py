@@ -18,7 +18,10 @@ if TYPE_CHECKING:
 
 
 def _service(args: argparse.Namespace) -> AtlasRagService:
-    settings = Settings(data_dir=Path(args.data_dir))
+    # An argparse default would silently outrank ATLASRAG_DATA_DIR, so the flag is only applied
+    # when it was actually given. Otherwise Settings resolves the environment as it does for the
+    # API, and both entry points agree about where the data lives.
+    settings = Settings(data_dir=Path(args.data_dir)) if args.data_dir else Settings()
     return AtlasRagService(settings)
 
 
@@ -360,7 +363,11 @@ def cmd_bench(args: argparse.Namespace) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="atlasrag", description="AtlasRAG command line")
-    parser.add_argument("--data-dir", default="var", help="directory for the registry and indexes")
+    parser.add_argument(
+        "--data-dir",
+        default=None,
+        help="registry and index directory (default: $ATLASRAG_DATA_DIR, else ./var)",
+    )
     parser.add_argument("--verbose", action="store_true")
     sub = parser.add_subparsers(dest="command", required=True)
 

@@ -18,7 +18,7 @@ ingestion, container packaging, and any performance measurement at all.
 
 | Feature | Status | Evidence |
 |---|---|---|
-| Deterministic ids (document + chunk) | VERIFIED | 135-test suite; two independent DBs produce identical ids |
+| Deterministic ids (document + chunk) | VERIFIED | 198-test suite; two independent DBs produce identical ids |
 | Offset-exact chunking | VERIFIED | every chunk asserts `text == doc[start:end]` |
 | Idempotent re-ingestion | VERIFIED | second ingest returns `unchanged`, counts unmoved |
 | Duplicate-content detection | VERIFIED | renamed copy returns `duplicate_content` |
@@ -36,7 +36,7 @@ ingestion, container packaging, and any performance measurement at all.
 | Injected-instruction filtering | VERIFIED | both adversarial queries abstain; held-out q22 generalised |
 | Evaluation harness + metrics | VERIFIED | executed; see EVALUATION.md |
 | Abstention calibration | VERIFIED | 264-point sweep, F1 0.833 on calibration |
-| Lint / format / strict types | VERIFIED | ruff clean, mypy strict clean on 49 files |
+| Lint / format / strict types | VERIFIED | ruff clean, mypy strict clean on 55 files |
 | Extractive answering | VERIFIED *with a measured limitation* | fails paraphrased questions — see below |
 | `OUT_OF_SCOPE` abstention reason | **UNREACHABLE** | calibrated floors are 0.0; see EVALUATION.md §2 |
 | HTTP API (8 routes + OpenAPI) | VERIFIED | 25 end-to-end HTTP tests |
@@ -53,7 +53,11 @@ ingestion, container packaging, and any performance measurement at all.
 | OCR / scanned PDFs | **NOT SUPPORTED** | a scan extracts nothing and is rejected as empty |
 | PDF tables / layout | **NOT SUPPORTED** | no claim made; cell order follows the text layer |
 | Source locators (page / section) | VERIFIED | survive a storage round trip; attached to citations |
-| Container packaging | IN PROGRESS | Dockerfile written; build result recorded in EVIDENCE.md |
+| Container build | VERIFIED | `docker build` exit 0, image 1.92 GB |
+| Container runs from a clean volume | VERIFIED | healthy in ~50 s, non-root (uid 10001) |
+| Fully offline operation | VERIFIED | `HF_HUB_OFFLINE=1`; dense index built from baked weights |
+| Container persistence across restart | VERIFIED | 3 docs / 3 chunks / dense ready after restart |
+| Container healthcheck | VERIFIED | probes `/ready`, reports healthy |
 | M5 experiment 1 (hybrid vs dense) | VERIFIED | executed on corpus v2 / dataset v3; EVALUATION.md §5a |
 | Concurrent read/write safety | VERIFIED | 4 reader threads during ingestion; no errors, no torn reads |
 | Concurrent duplicate ingestion | VERIFIED | 4 threads racing one file yield 1 document |
@@ -111,6 +115,8 @@ ingestion, container packaging, and any performance measurement at all.
 | Conflict detection on the top candidate only | Missed the 30-vs-90-day contradiction, because the top sentence was a framing sentence with no value. Fixed by scanning the credible band. |
 | Quoting any sentence | Markdown headings and injected instructions were quoted as answers. Fixed by a quotability filter. |
 | `min_bm25` / `min_cosine` thresholds | Did not discriminate at all. Kept at 0.0 and documented rather than tuned to look active. |
+| venv built at `/build` then copied to `/app` | **Real bug.** Console-script shebangs bake an absolute interpreter path, so the container exited with `exec /app/.venv/bin/uvicorn: no such file or directory` despite a green build. Fixed by building the venv at its final path. |
+| CLI `--data-dir` argparse default | **Real bug.** Defaulting to `var` silently outranked `ATLASRAG_DATA_DIR`, so the API and CLI disagreed about the data directory inside the container. Now defaults to `None`. |
 | Citation marker after the full stop (`Sentence. [1]`) | **Real bug, found by testing.** Segmentation put the marker in its own sentence, orphaning the citation and leaving the claim uncited, so a correctly-cited answer was rejected. Fixed by normalising markers inside the sentence first. |
 | Adding `long` to the stopword list | **Not done.** It would likely fix q14, which is in the test split. Declined as tuning on test. |
 | Hypothesis: hybrid beats dense once near-duplicate identifiers are present | **Refuted.** The predicted dense failure occurred exactly as stated (q32, q33), but hybrid only reached parity, not superiority. EVALUATION.md §5a. |

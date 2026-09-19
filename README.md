@@ -10,7 +10,8 @@ provider contains no language model at all.
 > [EVIDENCE.md](EVIDENCE.md) produced that result. Current capabilities and — just as
 > importantly — current limitations are in [STATUS.md](STATUS.md).
 
-**Status: Milestones 1–8 executed** (Milestone 5 is open-ended; experiment 1 of n is done). CLI, HTTP API and web
+**Status: Milestones 1–8 executed** (Milestone 5 is open-ended; experiment 1 of n is done).
+The container has been built, run from a clean volume, and verified offline end to end. CLI, HTTP API and web
 interface all work against the same service layer. Not yet done: PDF/HTML ingestion, and a
 container build verified end to end. The generative provider's safety machinery is tested
 against a stub model but has **never been run against a real one** — see
@@ -121,6 +122,22 @@ containing instruction-like text, and displays abstentions with their reason.
 > The API has no authentication, rate limiting or request-size cap. Bind it to localhost.
 > See [SECURITY.md](SECURITY.md).
 
+## Container
+
+```bash
+docker build -t atlasrag:0.1.0 .
+docker run -d -p 8000:8000 -v atlasrag-data:/data atlasrag:0.1.0
+```
+
+The embedding model is baked in at build time and the runtime sets `HF_HUB_OFFLINE=1`, so the
+container needs **no network access to answer a question**. It runs as a non-root user, keeps
+the registry and both indexes on the `/data` volume, and its healthcheck probes `/ready` rather
+than `/health` — a process that is up but whose indexes are unusable is not ready.
+
+Verified from a clean volume: ingest Markdown, PDF and HTML through the API, build the dense
+index offline, answer with a citation carrying `page 2`, and survive a restart with the data
+intact. See [EVIDENCE.md](EVIDENCE.md).
+
 ## Evaluation
 
 ```bash
@@ -151,8 +168,8 @@ uv run mypy
 uv run pytest -q
 ```
 
-Last executed: ruff clean · mypy strict clean (50 files) · **167 tests passed**
-(unit, integration, reliability, generative-provider and end-to-end HTTP).
+Last executed: ruff clean · mypy strict clean (55 files) · **198 tests passed**
+(unit, integration, format adapters, reliability, generative-provider and end-to-end HTTP).
 
 ```bash
 uv run atlasrag bench --repeats 5    # query latency percentiles on your machine

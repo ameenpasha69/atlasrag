@@ -468,6 +468,109 @@ upgrade on open; no rows are rewritten.
 
 ---
 
+## 2026-09-19 - Milestone 8 - Container build and clean-environment start
+
+```
+docker build -t atlasrag:0.1.0 .        -> exit 0, image 1.92 GB
+docker run -d -p 8099:8000 -v atlasrag-verify-data:/data atlasrag:0.1.0
+```
+
+**A real defect, found by running the first image that built cleanly.** The container exited
+immediately with:
+
+```
+exec /app/.venv/bin/uvicorn: no such file or directory
+```
+
+The file was present. Console scripts bake an absolute interpreter path into their shebang, and
+the venv had been created at `/build/.venv` in the builder stage then copied to `/app/.venv`, so
+every entry point pointed at an interpreter that did not exist in the runtime image. Fixed by
+building the virtualenv at its final path. A green `docker build` says nothing about whether the
+image runs.
+
+**After the fix, observed from a clean volume:**
+
+```
+healthy after ~50s          (HEALTHCHECK probes /ready, not /health)
+docker inspect .State.Health.Status -> healthy  (5 checks)
+whoami inside the container         -> atlas    (uid 10001, non-root)
+```
+
+Uploading a Markdown file, a PDF and an HTML page through the API:
+
+```
+sensor-calibration.md    -> ingested 1 chunks
+vehicle-inspection.pdf   -> ingested 1 chunks
+hub-status-page.html     -> ingested 1 chunks
+registry: 3 docs, 3 chunks
+```
+
+`/ready` -> `dense_ready: true, vectors: 3, dim: 384, dense_error: null`.
+
+That line is the one that matters: the image sets `HF_HUB_OFFLINE=1`, so the dense index was
+built entirely from weights baked in at build time, with **no network access at run time**.
+
+Hybrid search and a grounded answer:
+
+```
+POST /search  "what tread depth fails the inspection"  (mode=hybrid)
+  3 hits, best cosine 0.7129, every hit retrieved by bm25 AND dense
+
+POST /answer  same question
+  answered: true
+  "Tyres and brakes / Tread depth below 2.4 millimetres fails the inspection and the
+   vehicle is withdrawn."
+  cite: vehicle inspection | page 2 | validated: True
+```
+
+A citation carrying `page 2`, verified against the stored source span, produced inside a
+container with no network.
+
+**Persistence across restart** (`docker restart`): `docs: 3, chunks: 3, dense: True`.
+
+**Packaged CLI inside the container:**
+
+```
+atlasrag --data-dir /data list
+  63faeea85247  Hub Status Reference          text/html        chunks=1  chars=935
+  8af655682e72  vehicle inspection            application/pdf  chunks=1  chars=716
+  8904ffa4f1fa  Conveyor Sensor Calibration   text/markdown    chunks=1  chars=1118
+```
+
+**Second defect found during this verification.** The CLI's `--data-dir` had an argparse default
+of `var`, which silently outranked `ATLASRAG_DATA_DIR`. The API honoured the environment
+variable and the CLI ignored it, so the two entry points disagreed about where the data lived
+inside the container. The flag now defaults to `None` and is applied only when given.
+
+**Re-verified after the `--data-dir` fix, on a fresh image and a fresh volume:**
+
+```
+atlasrag ingest fixtures/corpus/formats       (no --data-dir flag; ATLASRAG_DATA_DIR=/data)
+  ingested  hub-status-page.html      chunks=1
+  rejected  scanned-no-text.pdf       contains no text after normalization
+  ingested  vehicle-inspection.pdf    chunks=1
+  registry: 2 documents, 2 chunks
+
+GET /ready  -> docs: 2, chunks: 2, dense: True, vectors: 2
+```
+
+The API reports exactly what the CLI ingested, which is the point of the fix: both entry points
+now resolve the same data directory from the environment. The scanned PDF is refused inside the
+container too.
+
+```
+POST /answer "what defect code is recorded for brake travel"
+  answered: true
+  "Brake travel greater than 40 millimetres is recorded as defect code BR-118."
+  cite: vehicle inspection | page 2 | validated: True
+```
+
+**Not measured, and therefore not claimed:** container start-up time on other hardware, memory
+ceiling, behaviour under concurrent load, or image size after any optimisation pass. The 1.92 GB
+is dominated by CPU torch.
+
+---
+
 ## Remaining limitations at this point in the log
 
 - No OCR, no scanned-PDF support, no table extraction, no layout understanding.
