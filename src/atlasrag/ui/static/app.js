@@ -339,9 +339,10 @@ async function runAnswer() {
         const head = el("div", "cite-head");
         head.append(
           el("span", "badge " + (c.validated ? "valid" : "invalid"), c.validated ? "verified" : "INVALID"),
-          el("span", null, c.title),
-          el("span", null, `[${c.start_offset}:${c.end_offset}]`)
+          el("span", null, c.title)
         );
+        if (c.locator) head.append(el("span", "badge", c.locator));
+        head.append(el("span", null, `[${c.start_offset}:${c.end_offset}]`));
         button2.append(head, el("div", "cite-snippet", c.snippet));
         button2.onclick = () => openDocument(c.document_id, c.start_offset, c.end_offset);
         out.append(button2);

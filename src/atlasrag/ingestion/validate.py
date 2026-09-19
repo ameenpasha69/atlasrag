@@ -17,6 +17,9 @@ _MEDIA_TYPES = {
     ".txt": "text/plain",
     ".md": "text/markdown",
     ".markdown": "text/markdown",
+    ".html": "text/html",
+    ".htm": "text/html",
+    ".pdf": "application/pdf",
 }
 
 _UNSAFE_NAME = re.compile(r"[\x00-\x1f<>:\"/\\|?*]")

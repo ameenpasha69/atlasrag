@@ -19,13 +19,13 @@
   <div>
     <section>
       <h2>Ingest</h2>
-      <input type="file" id="files" multiple accept=".txt,.md,.markdown">
+      <input type="file" id="files" multiple accept=".txt,.md,.markdown,.html,.htm,.pdf">
       <div class="row" style="margin-top:10px">
         <button id="upload-btn">Upload</button>
         <button id="reindex-btn" class="secondary" title="Drop every derived index and rebuild from the registry">Rebuild indexes</button>
       </div>
       <div id="ingest-results"></div>
-      <p class="hint">Only .txt, .md and .markdown are supported. Anything else is rejected with a reason.</p>
+      <p class="hint">Supported: .txt, .md, .markdown, .html, .pdf. Anything else is rejected with a reason. PDFs are read from the text layer only — there is no OCR, so a scan is rejected as empty.</p>
     </section>
 
     <section>
@@ -65,6 +65,8 @@
             <option value="">any</option>
             <option value="text/markdown">text/markdown</option>
             <option value="text/plain">text/plain</option>
+            <option value="text/html">text/html</option>
+            <option value="application/pdf">application/pdf</option>
           </select>
         </div>
       </div>

@@ -1,0 +1,187 @@
+%PDF-1.3
+%‚„œ”
+1 0 obj
+<<
+/Producer (pypdf)
+>>
+endobj
+2 0 obj
+<<
+/Type /Pages
+/Count 4
+/Kids [ 4 0 R 7 0 R 10 0 R 13 0 R ]
+>>
+endobj
+3 0 obj
+<<
+/Type /Catalog
+/Pages 2 0 R
+>>
+endobj
+4 0 obj
+<<
+/Type /Page
+/Resources <<
+/Font <<
+/F1 6 0 R
+>>
+>>
+/MediaBox [ 0.0 0.0 595 842 ]
+/Parent 2 0 R
+/Contents 5 0 R
+>>
+endobj
+5 0 obj
+<<
+/Length 395
+>>
+stream
+BT
+/F1 11 Tf
+1 0 0 1 60 760 Tm (Meridian Logistics - Confidential) Tj
+1 0 0 1 60 734 Tm (Vehicle Inspection Procedure) Tj
+1 0 0 1 60 708 Tm (Every vehicle is inspected before each shift by the driver taking it out.) Tj
+1 0 0 1 60 682 Tm (The inspection covers tyres, lights, brakes, mirrors and the load restraint system.) Tj
+1 0 0 1 60 656 Tm (Vehicle Inspection Procedure  |  revision 7) Tj
+ET
+endstream
+endobj
+6 0 obj
+<<
+/Type /Font
+/Subtype /Type1
+/BaseFont /Helvetica
+>>
+endobj
+7 0 obj
+<<
+/Type /Page
+/Resources <<
+/Font <<
+/F1 9 0 R
+>>
+>>
+/MediaBox [ 0.0 0.0 595 842 ]
+/Parent 2 0 R
+/Contents 8 0 R
+>>
+endobj
+8 0 obj
+<<
+/Length 386
+>>
+stream
+BT
+/F1 11 Tf
+1 0 0 1 60 760 Tm (Meridian Logistics - Confidential) Tj
+1 0 0 1 60 734 Tm (Tyres and brakes) Tj
+1 0 0 1 60 708 Tm (Tread depth below 2.4 millimetres fails the inspection and the vehicle is withdrawn.) Tj
+1 0 0 1 60 682 Tm (Brake travel greater than 40 millimetres is recorded as defect code BR-118.) Tj
+1 0 0 1 60 656 Tm (Vehicle Inspection Procedure  |  revision 7) Tj
+ET
+endstream
+endobj
+9 0 obj
+<<
+/Type /Font
+/Subtype /Type1
+/BaseFont /Helvetica
+>>
+endobj
+10 0 obj
+<<
+/Type /Page
+/Resources <<
+/Font <<
+/F1 12 0 R
+>>
+>>
+/MediaBox [ 0.0 0.0 595 842 ]
+/Parent 2 0 R
+/Contents 11 0 R
+>>
+endobj
+11 0 obj
+<<
+/Length 372
+>>
+stream
+BT
+/F1 11 Tf
+1 0 0 1 60 760 Tm (Meridian Logistics - Confidential) Tj
+1 0 0 1 60 734 Tm (Load restraint) Tj
+1 0 0 1 60 708 Tm (Straps showing any cut through the outer weave are replaced, never repaired.) Tj
+1 0 0 1 60 682 Tm (A vehicle failing load restraint is withdrawn under defect code LR-204.) Tj
+1 0 0 1 60 656 Tm (Vehicle Inspection Procedure  |  revision 7) Tj
+ET
+endstream
+endobj
+12 0 obj
+<<
+/Type /Font
+/Subtype /Type1
+/BaseFont /Helvetica
+>>
+endobj
+13 0 obj
+<<
+/Type /Page
+/Resources <<
+/Font <<
+/F1 15 0 R
+>>
+>>
+/MediaBox [ 0.0 0.0 595 842 ]
+/Parent 2 0 R
+/Contents 14 0 R
+>>
+endobj
+14 0 obj
+<<
+/Length 393
+>>
+stream
+BT
+/F1 11 Tf
+1 0 0 1 60 760 Tm (Meridian Logistics - Confidential) Tj
+1 0 0 1 60 734 Tm (Recording and escalation) Tj
+1 0 0 1 60 708 Tm (Every inspection produces a record whether or not a defect is found.) Tj
+1 0 0 1 60 682 Tm (Three failed inspections on one vehicle within thirty days escalate to the fleet engineer.) Tj
+1 0 0 1 60 656 Tm (Vehicle Inspection Procedure  |  revision 7) Tj
+ET
+endstream
+endobj
+15 0 obj
+<<
+/Type /Font
+/Subtype /Type1
+/BaseFont /Helvetica
+>>
+endobj
+xref
+0 16
+0000000000 65535 f 
+0000000015 00000 n 
+0000000054 00000 n 
+0000000133 00000 n 
+0000000182 00000 n 
+0000000314 00000 n 
+0000000760 00000 n 
+0000000830 00000 n 
+0000000962 00000 n 
+0000001399 00000 n 
+0000001469 00000 n 
+0000001604 00000 n 
+0000002028 00000 n 
+0000002099 00000 n 
+0000002234 00000 n 
+0000002679 00000 n 
+trailer
+<<
+/Size 16
+/Root 3 0 R
+/Info 1 0 R
+>>
+startxref
+2750
+%%EOF

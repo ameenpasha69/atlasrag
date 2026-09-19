@@ -31,7 +31,14 @@ class Settings(BaseSettings):
     data_dir: Path = Path("var")
 
     max_document_bytes: int = Field(default=5_000_000, ge=1)
-    allowed_extensions: tuple[str, ...] = (".txt", ".md", ".markdown")
+    allowed_extensions: tuple[str, ...] = (
+        ".txt",
+        ".md",
+        ".markdown",
+        ".html",
+        ".htm",
+        ".pdf",
+    )
 
     chunk_size_chars: int = Field(default=1200, ge=200, le=8000)
     chunk_overlap_chars: int = Field(default=200, ge=0, le=2000)

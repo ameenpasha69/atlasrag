@@ -10,7 +10,7 @@ provider contains no language model at all.
 > [EVIDENCE.md](EVIDENCE.md) produced that result. Current capabilities and — just as
 > importantly — current limitations are in [STATUS.md](STATUS.md).
 
-**Status: Milestones 1, 2, 3, 5 (experiment 1), 6 and 7 executed.** CLI, HTTP API and web
+**Status: Milestones 1–8 executed** (Milestone 5 is open-ended; experiment 1 of n is done). CLI, HTTP API and web
 interface all work against the same service layer. Not yet done: PDF/HTML ingestion, and a
 container build verified end to end. The generative provider's safety machinery is tested
 against a stub model but has **never been run against a real one** — see
@@ -20,8 +20,10 @@ against a stub model but has **never been run against a real one** — see
 
 ## What it does
 
-1. Ingests `.txt` / `.md` deterministically — same bytes in, same document and chunk ids out.
-2. Chunks with exact character offsets, so every citation is checkable against source text.
+1. Ingests `.txt`, `.md`, `.html` and `.pdf` deterministically — same bytes in, same document
+   and chunk ids out.
+2. Chunks with exact character offsets, so every citation is checkable against source text,
+   and reports where it came from in the source's own terms — "page 3", "Retry semantics".
 3. Retrieves with **BM25** (exact terms, rare identifiers) and **dense vectors** (paraphrase).
 4. Fuses the two rankings with **RRF**, exposing every rank, raw score and contribution.
 5. Answers by quoting verbatim source spans with validated citations — or **abstains**.
@@ -215,8 +217,10 @@ torch. Concrete adapters are wired in `service.py` and nowhere else.
 
 ## Not supported
 
-No PDF, HTML, OCR, scanned documents, table extraction or layout understanding. No
-authentication, rate limiting, multi-tenancy or compliance claim — bind the API to localhost.
+**No OCR, no scanned PDFs, no table extraction, no layout understanding.** PDF means the text
+layer; a scan extracts nothing and is rejected as empty rather than indexed blank. HTML and
+PDF are tested but not yet *evaluated* — no retrieval metric covers them. No authentication,
+rate limiting, multi-tenancy or compliance claim — bind the API to localhost.
 Latency is measured; **throughput, concurrency under load and memory use are not**. Answer
 quality with a generative provider is unmeasured, because no real model endpoint was
 available here.

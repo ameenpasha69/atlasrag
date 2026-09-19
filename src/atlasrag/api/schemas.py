@@ -195,6 +195,7 @@ class CitationOut(BaseModel):
     end_offset: int
     snippet: str
     validated: bool
+    locator: str | None = None
 
     @classmethod
     def from_citation(cls, citation: Citation) -> CitationOut:
@@ -206,6 +207,7 @@ class CitationOut(BaseModel):
             end_offset=citation.end_offset,
             snippet=citation.snippet,
             validated=citation.validated,
+            locator=citation.locator,
         )
 
 

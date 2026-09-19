@@ -1,6 +1,6 @@
 # AtlasRAG — Status
 
-Updated: 2026-09-19 · Milestones 1, 2, 6 executed; Milestone 5 experiment 1 executed
+Updated: 2026-09-19 · Milestones 1-8 executed (Milestone 5: experiment 1 of n)
 
 A capability is `VERIFIED` only if a command in [EVIDENCE.md](EVIDENCE.md) produced that
 result on this machine. Nothing here is aspirational.
@@ -48,7 +48,11 @@ ingestion, container packaging, and any performance measurement at all.
 | LLM answer provider (abstraction) | VERIFIED *against a stub model* | 17 tests; post-generation support check, fabrication rejected |
 | LLM provider against a real model | UNVERIFIED | no model endpoint available in this environment |
 | Reported (not silent) provider fallback | VERIFIED | `/ready` exposes requested vs active provider |
-| PDF / HTML ingestion | NOT STARTED | — |
+| HTML ingestion | VERIFIED | 12 tests: boilerplate, entities, reading order, section locators |
+| PDF ingestion (text layer) | VERIFIED | 10 tests: page locators, running header/footer removal |
+| OCR / scanned PDFs | **NOT SUPPORTED** | a scan extracts nothing and is rejected as empty |
+| PDF tables / layout | **NOT SUPPORTED** | no claim made; cell order follows the text layer |
+| Source locators (page / section) | VERIFIED | survive a storage round trip; attached to citations |
 | Container packaging | IN PROGRESS | Dockerfile written; build result recorded in EVIDENCE.md |
 | M5 experiment 1 (hybrid vs dense) | VERIFIED | executed on corpus v2 / dataset v3; EVALUATION.md §5a |
 | Concurrent read/write safety | VERIFIED | 4 reader threads during ingestion; no errors, no torn reads |
@@ -61,7 +65,8 @@ ingestion, container packaging, and any performance measurement at all.
 
 ## Verified capabilities, stated precisely
 
-- Ingests `.txt`, `.md`, `.markdown`. **No other format is supported or claimed.**
+- Ingests `.txt`, `.md`, `.markdown`, `.html`, `.htm`, `.pdf`. **No other format is
+  supported or claimed**, and within PDF only the text layer is read.
 - 7 documents → 11 chunks → 646 BM25 terms → 11 dense vectors at dimension 384.
 - Searches in `bm25`, `dense`, `hybrid`, each exposing per-retriever rank, raw score and RRF
   contribution for every hit.
@@ -116,6 +121,10 @@ ingestion, container packaging, and any performance measurement at all.
 Build a calibration split containing identifier probes, so the weighted-RRF experiment can be
 run without touching the test split. Until that exists, hybrid's justification remains
 robustness rather than accuracy, and the README says so.
+
+After that, the honest ranking of remaining work by value: re-run the evaluation with the
+HTML and PDF fixtures in the corpus (they are tested but not yet *evaluated*), then measure
+the generative provider against a real endpoint.
 
 ## Verification commands
 

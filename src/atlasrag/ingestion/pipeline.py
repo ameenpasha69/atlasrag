@@ -20,7 +20,8 @@ from atlasrag.domain.models import (
     IngestionResult,
 )
 from atlasrag.errors import IngestionError
-from atlasrag.ingestion.normalize import decode_bytes, derive_title, normalize_text
+from atlasrag.ingestion.loaders.registry import loader_for
+from atlasrag.ingestion.normalize import derive_title
 from atlasrag.ingestion.validate import (
     media_type_for,
     safe_filename,
@@ -55,7 +56,8 @@ class IngestionService:
             clean_name = safe_filename(filename)
             media_type = media_type_for(clean_name, self._settings.allowed_extensions)
             validate_size(len(raw), self._settings.max_document_bytes, clean_name)
-            normalized = normalize_text(decode_bytes(raw))
+            loaded = loader_for(media_type).load(raw, filename=clean_name)
+            normalized = loaded.text
             validate_normalized(normalized, clean_name)
         except IngestionError as exc:
             return IngestionResult(
@@ -94,7 +96,7 @@ class IngestionService:
 
         document = Document(
             document_id=document_id,
-            title=derive_title(normalized, clean_name),
+            title=loaded.title_hint or derive_title(normalized, clean_name),
             source=DocumentSource(
                 uri=uri or clean_name,
                 scheme=scheme,  # type: ignore[arg-type]
@@ -108,6 +110,7 @@ class IngestionService:
             char_count=len(normalized),
             ingestion_version=INGESTION_VERSION,
             ingested_at_utc=now or datetime.now(UTC),
+            locators=loaded.locators,
         )
         chunks = chunk_document(document, self._chunking)
         self._store.upsert_document(document, chunks)

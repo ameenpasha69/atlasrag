@@ -29,6 +29,20 @@ class DocumentSource(BaseModel):
     mtime_utc: datetime | None = None
 
 
+class SourceLocator(BaseModel):
+    """Where a character offset sits in the original document's own structure.
+
+    A character span is exact but meaningless to a reader: "page 4" or "Retry semantics" is what
+    lets someone find the passage in the source. Locators are emitted by the loader, because only
+    the loader knows whether the source had pages, headings or neither.
+    """
+
+    model_config = _FROZEN
+
+    label: str
+    start_offset: int = Field(ge=0)
+
+
 class Document(BaseModel):
     model_config = _FROZEN
 
@@ -40,6 +54,7 @@ class Document(BaseModel):
     char_count: int = Field(ge=0)
     ingestion_version: str
     ingested_at_utc: datetime
+    locators: list[SourceLocator] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def _char_count_matches_text(self) -> Document:
@@ -181,6 +196,7 @@ class Citation(BaseModel):
     end_offset: int
     snippet: str
     validated: bool
+    locator: str | None = None
     retrieval_provenance: list[RankContribution] = Field(default_factory=list)
 
 

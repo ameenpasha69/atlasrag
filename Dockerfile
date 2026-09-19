@@ -10,7 +10,11 @@ ENV UV_LINK_MODE=copy \
 
 COPY --from=ghcr.io/astral-sh/uv:0.12.5 /uv /usr/local/bin/uv
 
-WORKDIR /build
+# The virtualenv must be built at its final runtime path. Console scripts bake an absolute
+# interpreter path into their shebang, so a venv created under /build and copied to /app fails
+# with `exec /app/.venv/bin/uvicorn: no such file or directory` — the script is present, its
+# interpreter is not. Found by running the first image that built cleanly.
+WORKDIR /app
 
 # Dependency layer first: it changes far less often than the source.
 COPY pyproject.toml uv.lock README.md ./
@@ -22,7 +26,7 @@ RUN uv sync --frozen --no-dev
 # Pre-fetch the pinned model revision so the runtime image needs no network.
 ENV HF_HOME=/opt/hf
 RUN --mount=type=cache,target=/root/.cache/huggingface \
-    /build/.venv/bin/python -c "\
+    /app/.venv/bin/python -c "\
 from transformers import AutoModel, AutoTokenizer; \
 m='BAAI/bge-small-en-v1.5'; r='5c38ec7c405ec4b44b94cc5a9bb96e735b38267a'; \
 AutoTokenizer.from_pretrained(m, revision=r); \
@@ -45,7 +49,7 @@ RUN useradd --create-home --uid 10001 atlas \
 
 WORKDIR /app
 
-COPY --from=builder --chown=atlas:atlas /build/.venv /app/.venv
+COPY --from=builder --chown=atlas:atlas /app/.venv /app/.venv
 COPY --from=builder --chown=atlas:atlas /opt/hf /opt/hf
 COPY --chown=atlas:atlas src/ /app/src/
 COPY --chown=atlas:atlas fixtures/ /app/fixtures/

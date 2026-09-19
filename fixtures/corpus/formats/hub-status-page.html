@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Hub Status Reference</title>
+  <style>
+    body { font-family: sans-serif; }
+    .banner { color: #b00; }
+  </style>
+  <script>
+    // Boilerplate that must never reach the index.
+    window.hubStatus = { poll: 5000, endpoint: "/api/status" };
+    function refresh() { console.log("refreshing hub status"); }
+  </script>
+</head>
+<body>
+
+<nav>
+  <ul>
+    <li><a href="/">Home</a></li>
+    <li><a href="/hubs">Hubs</a></li>
+    <li><a href="/reports">Reports</a></li>
+  </ul>
+</nav>
+
+<header>
+  <p>Meridian Logistics internal portal &mdash; navigation chrome repeated on every page.</p>
+</header>
+
+<main>
+  <h1>Hub Status Reference</h1>
+
+  <p>Each hub reports a status colour every sixty seconds. The colour is derived from the
+  exception lane depth and the oldest unprocessed item age, whichever is worse.</p>
+
+  <h2>Status colours</h2>
+
+  <p>Green means the exception lane holds fewer than twenty items and nothing has waited more
+  than ten minutes. Amber means either threshold has been crossed. Red means both have been
+  crossed, or the hub has not reported for three consecutive intervals.</p>
+
+  <p>A hub that reports red for more than fifteen minutes escalates automatically to the
+  regional duty manager. Escalation is recorded with the reference HUB-ESC-2291.</p>
+
+  <h2>Reporting gaps</h2>
+
+  <p>A missing report is not treated as red immediately, because a single dropped interval is
+  usually a network blip. Three consecutive misses are treated as red because that pattern has
+  never been observed without an underlying fault.</p>
+
+  <p>Entities such as &amp; and &lt;angle brackets&gt; must survive extraction intact.</p>
+</main>
+
+<aside>
+  <p>Related: staffing rota, vehicle maintenance schedule.</p>
+</aside>
+
+<footer>
+  <p>Meridian Logistics internal portal &mdash; navigation chrome repeated on every page.</p>
+</footer>
+
+</body>
+</html>

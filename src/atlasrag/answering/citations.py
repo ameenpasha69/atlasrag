@@ -8,6 +8,7 @@ of the cited document, read back from the registry. Validation deliberately re-r
 from __future__ import annotations
 
 from atlasrag.domain.models import Citation, RankContribution
+from atlasrag.ingestion.loaders.base import locator_for
 from atlasrag.storage.sqlite_store import SqliteDocumentStore
 
 
@@ -35,6 +36,7 @@ def build_citation(
     provenance: list[RankContribution] | None = None,
 ) -> Citation:
     validated = verify_span(store, document_id=document_id, start=start, end=end, snippet=snippet)
+    document = store.get_document(document_id)
     return Citation(
         document_id=document_id,
         chunk_id=chunk_id,
@@ -43,6 +45,7 @@ def build_citation(
         end_offset=end,
         snippet=snippet,
         validated=validated,
+        locator=locator_for(document.locators, start) if document else None,
         retrieval_provenance=provenance or [],
     )
 

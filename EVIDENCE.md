@@ -422,9 +422,57 @@ uv run pytest -q                     -> 167 passed
 
 ---
 
+## 2026-09-19 - Milestone 4 - HTML and PDF adapters
+
+`uv run pytest tests/integration/test_formats.py -q` -> **31 passed**, first run.
+
+Fixtures are reproducible from source rather than committed as opaque blobs:
+`fixtures/corpus/formats/generate_pdf_fixtures.py` builds both PDFs with pypdf.
+
+**HTML** (`hub-status-page.html`), observed output:
+
+```
+title:     Hub Status Reference          (from <title>)
+locators:  Hub Status Reference @0, Status colours @186, Reporting gaps @616
+script/style content present?  False
+nav / header / footer / aside present?  False
+entities decoded?  True   (&amp; -> &,  &lt;angle brackets&gt; -> <angle brackets>)
+```
+
+A defect found while inspecting that output: source line wrapping inside a paragraph was being
+preserved, so cited snippets carried arbitrary line breaks. HTML treats a newline inside a
+paragraph as a space, so intra-block whitespace is now collapsed (outside `pre`/`code`).
+
+**PDF** (`vehicle-inspection.pdf`, 4 pages, same running header and footer on every page):
+
+```
+locators:  page 1 @0, page 2 @188, page 3 @367, page 4 @532
+  page 1 -> 'Vehicle Inspection Procedure\nEvery vehicle is inspected befo'
+  page 2 -> 'Tyres and brakes\nTread depth below 2.4 millimetres fails the'
+  page 3 -> 'Load restraint\nStraps showing any cut through the outer weav'
+  page 4 -> 'Recording and escalation\nEvery inspection produces a record '
+running header 'Meridian Logistics - Confidential' removed?  True
+running footer 'revision 7' removed?  True
+```
+
+**Scanned PDF** (`scanned-no-text.pdf`, no text layer): extracts `''`, and the pipeline rejects
+it with `empty_document`, leaving the registry at `(0, 0)`. **There is no OCR**, and a scan is
+refused rather than indexed as a blank document.
+
+Citation accuracy holds identically across formats: every chunk of every ingested document
+satisfies `chunk.text == document.normalized_text[start:end]`, and an answer citing the PDF
+carries `locator: "page 2"` alongside its verified span.
+
+Schema migrated v1 -> v2 (additive `locators` column, applied in place). Existing databases
+upgrade on open; no rows are rewritten.
+
+---
+
 ## Remaining limitations at this point in the log
 
-- No container, no LLM provider, no PDF/HTML ingestion.
+- No OCR, no scanned-PDF support, no table extraction, no layout understanding.
+- HTML and PDF are tested but **not yet evaluated** - the evaluation corpus is still v1/v2
+  Markdown and text, so no retrieval metric covers the new formats.
 - The API has no authentication, rate limiting or request-size cap; it is a localhost tool.
 - No latency, throughput, concurrency or memory measurement has been taken. **No performance
   claim of any kind is supported by this log.**

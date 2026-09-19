@@ -8,6 +8,7 @@ properties rather than synchronization chores.
 
 from __future__ import annotations
 
+import json
 import sqlite3
 import threading
 from collections.abc import Sequence
@@ -21,10 +22,11 @@ from atlasrag.domain.models import (
     DocumentSource,
     DocumentSummary,
     SearchFilters,
+    SourceLocator,
 )
 from atlasrag.errors import StorageError
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta (
@@ -45,7 +47,8 @@ CREATE TABLE IF NOT EXISTS documents (
     normalized_text   TEXT NOT NULL,
     char_count        INTEGER NOT NULL,
     ingestion_version TEXT NOT NULL,
-    ingested_at_utc   TEXT NOT NULL
+    ingested_at_utc   TEXT NOT NULL,
+    locators          TEXT NOT NULL DEFAULT '[]'
 );
 
 CREATE INDEX IF NOT EXISTS idx_documents_content ON documents(content_sha256);
@@ -90,7 +93,32 @@ class SqliteDocumentStore:
                 (str(SCHEMA_VERSION),),
             )
             self._conn.commit()
+            self._migrate()
         self._assert_schema_version()
+
+    def _migrate(self) -> None:
+        """Bring an older database up to SCHEMA_VERSION.
+
+        Additive and idempotent. A destructive migration would need a different mechanism and a
+        much louder conversation; nothing here rewrites or drops existing rows.
+        """
+        row = self._conn.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()
+        current = int(row["value"]) if row else SCHEMA_VERSION
+
+        if current < 2:
+            columns = {
+                r["name"] for r in self._conn.execute("PRAGMA table_info(documents)").fetchall()
+            }
+            if "locators" not in columns:
+                self._conn.execute(
+                    "ALTER TABLE documents ADD COLUMN locators TEXT NOT NULL DEFAULT '[]'"
+                )
+            current = 2
+
+        self._conn.execute(
+            "UPDATE meta SET value = ? WHERE key = 'schema_version'", (str(current),)
+        )
+        self._conn.commit()
 
     def _assert_schema_version(self) -> None:
         row = self._conn.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()
@@ -119,8 +147,8 @@ class SqliteDocumentStore:
                 INSERT INTO documents (
                     document_id, title, uri, scheme, media_type, original_filename,
                     size_bytes, mtime_utc, content_sha256, normalized_text, char_count,
-                    ingestion_version, ingested_at_utc
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    ingestion_version, ingested_at_utc, locators
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 ON CONFLICT(document_id) DO UPDATE SET
                     title=excluded.title,
                     uri=excluded.uri,
@@ -133,7 +161,8 @@ class SqliteDocumentStore:
                     normalized_text=excluded.normalized_text,
                     char_count=excluded.char_count,
                     ingestion_version=excluded.ingestion_version,
-                    ingested_at_utc=excluded.ingested_at_utc
+                    ingested_at_utc=excluded.ingested_at_utc,
+                    locators=excluded.locators
                 """,
                 (
                     document.document_id,
@@ -149,6 +178,7 @@ class SqliteDocumentStore:
                     document.char_count,
                     document.ingestion_version,
                     _to_iso(document.ingested_at_utc),
+                    json.dumps([loc.model_dump() for loc in document.locators]),
                 ),
             )
             self._conn.executemany(
@@ -191,6 +221,7 @@ class SqliteDocumentStore:
             char_count=row["char_count"],
             ingestion_version=row["ingestion_version"],
             ingested_at_utc=_from_iso(row["ingested_at_utc"]),  # type: ignore[arg-type]
+            locators=[SourceLocator(**item) for item in json.loads(row["locators"] or "[]")],
         )
 
     @staticmethod

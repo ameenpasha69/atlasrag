@@ -225,3 +225,61 @@ most flattering possible way to hide a bug. `AnswerProviderError` is raised and 
 503; `AbstentionReason` has no member for it, so the type system prevents the confusion.
 **Trade-offs.** Callers must handle an error path as well as an abstention path.
 **Revisit if.** Never for the semantics; the transport shape may change.
+
+---
+
+### D-017 - Locators are produced by the loader, because only the loader knows the source's shape
+
+**Context.** A character span is exact but unreadable: "characters 1840-1962" does not help
+anyone find the passage. A PDF has pages, Markdown and HTML have headings, plain text has
+neither.
+**Chosen because.** Each loader emits `SourceLocator(label, start_offset)` entries describing
+its own structure, and a citation resolves its offset to the last locator at or before it. The
+retrieval and answering layers stay ignorant of formats entirely.
+**Trade-offs.** Required a schema migration (v1 -> v2, additive `locators` column). Plain text
+reports no locator at all rather than inventing a fake one.
+**Revisit if.** A format needs richer structure than a flat labelled list, such as nested
+sections where "3.2.1" should be reported with its parents.
+
+---
+
+### D-018 - HTML drops navigation chrome; PDF drops running headers and footers
+
+**Context.** Both formats repeat boilerplate. Indexed, it competes with body text on every page
+and pollutes every ranking.
+**Chosen because.** In HTML, `nav`, `header`, `footer` and `aside` are semantic elements whose
+whole purpose is chrome, so they are dropped structurally. In PDF there is no such markup, so
+boilerplate is detected statistically: a line appearing at the top or bottom of at least 60% of
+pages, in a document of at least three pages.
+**Trade-offs, stated because they are real.** A fact appearing *only* in an HTML footer or a PDF
+running head is lost. The PDF threshold is a judgement call, not a calibrated value - there is
+no labelled dataset of boilerplate here, so it is documented as a heuristic rather than
+presented as tuned.
+**Revisit if.** A corpus keeps real content in footers, or the ratio visibly misfires.
+
+---
+
+### D-019 - PDF means the text layer, and nothing more
+
+**Context.** "Supports PDF" is one of the easiest claims to overstate.
+**Chosen because.** `pypdf` extracts the text layer. That is the whole capability. There is no
+OCR, so a scanned page yields nothing and the pipeline rejects it as an empty document rather
+than indexing a blank one. There is no table extraction and no layout model, so a table's cells
+arrive in whatever order the text layer stores them.
+**Trade-offs.** Scanned archives are simply out of scope.
+**Revisit if.** OCR is genuinely needed - which means a new dependency, new fixtures, and its
+own accuracy evaluation, not a quiet addition to this loader.
+
+---
+
+### D-020 - HTML offsets index the extracted text, not the source bytes
+
+**Context.** A citation into an HTML document must be checkable.
+**Chosen because.** Extraction discards tags and collapses insignificant whitespace, so there is
+no stable mapping back to a byte range in the original file. Offsets therefore index the
+extracted text, which is what the registry stores and what `verify_span` checks against - so
+citations remain exactly verifiable against the thing the system actually indexed.
+**Trade-offs.** A citation cannot be turned into a byte range in the original `.html` file, so
+it cannot drive a highlight in the raw source.
+**Revisit if.** Highlighting inside the original document is ever required; that needs the
+extractor to carry a source-offset map, which is a significantly larger change.

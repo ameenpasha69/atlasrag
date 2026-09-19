@@ -17,6 +17,7 @@ dependencies = [
     "torch>=2.6,<3",
     "transformers>=4.44,<5",
     "safetensors>=0.4,<1",
+    "pypdf>=5.0,<7",
 ]
 
 [project.optional-dependencies]

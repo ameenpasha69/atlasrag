@@ -1,0 +1,16 @@
+# Binary fixtures must never have line endings rewritten. Git's CRLF conversion would corrupt
+# a PDF on checkout, and the corruption would only surface as a confusing extraction failure.
+*.pdf binary
+*.npy binary
+
+# Text fixtures are part of the ingestion contract: the ingester normalises line endings, but
+# committing them as LF keeps checksums and chunk ids identical across platforms.
+*.md   text eol=lf
+*.txt  text eol=lf
+*.html text eol=lf
+*.jsonl text eol=lf
+*.py   text eol=lf
+*.toml text eol=lf
+*.json text eol=lf
+*.css  text eol=lf
+*.js   text eol=lf
