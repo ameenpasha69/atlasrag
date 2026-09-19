@@ -7,10 +7,6 @@ class AtlasRagError(Exception):
     """Base class for every error this package raises deliberately."""
 
 
-class ConfigurationError(AtlasRagError):
-    pass
-
-
 class IngestionError(AtlasRagError):
     def __init__(self, message: str, *, code: str) -> None:
         super().__init__(message)
@@ -43,10 +39,6 @@ class UnsafePathError(IngestionError):
 
 
 class StorageError(AtlasRagError):
-    pass
-
-
-class DocumentNotFoundError(StorageError):
     pass
 
 

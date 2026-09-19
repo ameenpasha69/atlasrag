@@ -19,14 +19,6 @@ from atlasrag.domain.models import (
 )
 
 
-class RetrievedChunk(Protocol):
-    """A single retriever's result before fusion."""
-
-    chunk_id: str
-    rank: int
-    raw_score: float
-
-
 @runtime_checkable
 class DocumentStore(Protocol):
     def upsert_document(self, document: Document, chunks: Sequence[Chunk]) -> None: ...
@@ -89,6 +81,5 @@ __all__ = [
     "DocumentStore",
     "EmbeddingModel",
     "RankContribution",
-    "RetrievedChunk",
     "Retriever",
 ]

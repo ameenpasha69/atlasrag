@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, field_validator
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DEFAULT_EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
@@ -72,11 +72,6 @@ class Settings(BaseSettings):
     llm_model: str | None = None
     llm_api_key: str | None = None
     llm_timeout_seconds: float = Field(default=60.0, gt=0)
-
-    @field_validator("chunk_overlap_chars")
-    @classmethod
-    def _overlap_below_size(cls, v: int, info: object) -> int:
-        return v
 
     def model_post_init(self, _context: object) -> None:
         if self.chunk_overlap_chars >= self.chunk_size_chars:
