@@ -7,12 +7,14 @@ nowhere else.
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from pathlib import Path
 
 from atlasrag.answering.abstention import AbstentionThresholds
 from atlasrag.answering.evidence import build_evidence
 from atlasrag.answering.extractive import ExtractiveAnswerProvider
+from atlasrag.answering.llm import HttpChatClient, LlmAnswerProvider
 from atlasrag.config import Settings
 from atlasrag.domain.models import (
     AnswerResponse,
@@ -22,12 +24,14 @@ from atlasrag.domain.models import (
     IngestionResult,
     SearchQuery,
 )
-from atlasrag.domain.protocols import EmbeddingModel
+from atlasrag.domain.protocols import AnswerProvider, EmbeddingModel
 from atlasrag.indexing.dense.embedder import BgeEmbedder
 from atlasrag.indexing.manager import IndexManager
 from atlasrag.ingestion.pipeline import IngestionService
 from atlasrag.retrieval.engine import SearchEngine, SearchOutcome
 from atlasrag.storage.sqlite_store import SqliteDocumentStore
+
+logger = logging.getLogger(__name__)
 
 
 def build_embedder(settings: Settings) -> EmbeddingModel:
@@ -59,10 +63,44 @@ class AtlasRagService:
             min_bm25=settings.abstain_min_bm25_score,
             min_cosine=settings.abstain_min_cosine,
         )
-        self.answerer = ExtractiveAnswerProvider(
+        self.extractive = ExtractiveAnswerProvider(
             self.store,
             idf=lambda term: self.indexes.bm25.idf(term),
             oov_idf=lambda: self.indexes.bm25.oov_idf,
+            thresholds=self.thresholds,
+        )
+        self.answer_provider_requested = settings.answer_provider
+        self.answer_provider_note: str | None = None
+        self.answerer: AnswerProvider = self._select_provider()
+
+    def _select_provider(self) -> AnswerProvider:
+        """Pick the answer provider, and say so when the pick is not what was asked for.
+
+        A request-time substitution would be a silent fallback. Choosing at construction and
+        reporting both the requested and the active provider through /ready keeps the
+        no-API-key path usable without ever making a degraded answer look like a normal one.
+        """
+        if self.settings.answer_provider != "llm":
+            return self.extractive
+
+        base_url = self.settings.llm_base_url
+        model = self.settings.llm_model
+        if not base_url or not model:
+            self.answer_provider_note = (
+                "answer_provider=llm was requested but ATLASRAG_LLM_BASE_URL and "
+                "ATLASRAG_LLM_MODEL are not both set; using the extractive provider"
+            )
+            logger.warning(self.answer_provider_note)
+            return self.extractive
+
+        return LlmAnswerProvider(
+            self.store,
+            HttpChatClient(
+                base_url=base_url,
+                model=model,
+                api_key=self.settings.llm_api_key,
+                timeout_seconds=self.settings.llm_timeout_seconds,
+            ),
             thresholds=self.thresholds,
         )
 

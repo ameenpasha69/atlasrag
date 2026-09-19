@@ -301,7 +301,48 @@ contains identifier probes first.
 
 ---
 
-## 6. Threats to validity
+## 6. Query latency
+
+```bash
+uv run atlasrag bench --repeats 5
+```
+
+15 queries x 5 repeats = 75 samples per mode, `top_k=5`, single-threaded, warm caches, after a
+warm-up query so the one-off model load is excluded.
+
+| mode | n | p50 ms | p95 ms | p99 ms | min ms | max ms |
+|---|---|---|---|---|---|---|
+| bm25 | 75 | **0.3** | 0.4 | 0.7 | 0.2 | 1.2 |
+| dense | 75 | 30.2 | 36.4 | 48.0 | 24.7 | 48.6 |
+| hybrid | 75 | 29.3 | 34.2 | 35.7 | 22.5 | 35.8 |
+
+Corpus: 7 documents, 11 chunks. Machine: AMD Ryzen 5 3550H, 5.9 GB RAM, Windows, CPU float32.
+
+### What these numbers say
+
+**BM25 is roughly a hundred times cheaper than dense.** 0.3 ms versus 30.2 ms at the median.
+The dense cost is almost entirely the query-side forward pass through the embedding model on
+CPU; the exact cosine search over an 11 x 384 matrix is negligible by comparison.
+
+**Hybrid costs the same as dense**, not the sum of both. Once a query has been embedded, adding
+a BM25 pass is sub-millisecond. That reframes §5a's conclusion usefully: hybrid's robustness
+benefit is *free relative to dense*, and expensive only relative to BM25 alone.
+
+So the three modes are not three points on a quality-cost curve. They are two cost tiers —
+sub-millisecond lexical, and ~30 ms anything-involving-embeddings — and within the expensive
+tier, hybrid is the robust choice at no extra cost.
+
+### What these numbers do not say
+
+They are single-threaded, on one machine, on a corpus small enough to fit in cache. They say
+nothing about concurrent load, and nothing about how the exact cosine search scales: at 11
+chunks the matrix multiply is free, and the O(n) scan that D-002 accepted has not yet been
+measured anywhere near the size where it would matter. **No throughput or capacity claim is
+supported by this table.**
+
+---
+
+## 7. Threats to validity
 
 Stated so no number above is read as more than it is.
 
@@ -324,7 +365,7 @@ Stated so no number above is read as more than it is.
 
 ---
 
-## 7. Reproducing
+## 8. Reproducing
 
 ```bash
 uv sync --extra dev

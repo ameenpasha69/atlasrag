@@ -43,6 +43,9 @@ class ReadyResponse(BaseModel):
     embedding_model: str
     embedding_revision: str
     config_fingerprint: str
+    answer_provider: str
+    answer_provider_requested: str
+    answer_provider_note: str | None = None
 
 
 class IngestionErrorOut(BaseModel):

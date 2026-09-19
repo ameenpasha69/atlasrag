@@ -327,6 +327,101 @@ The obvious follow-up — weighted RRF favouring BM25 on identifier-shaped queri
 
 ---
 
+## 2026-09-19 - Milestone 7 - Reliability
+
+`uv run pytest tests/integration/test_reliability.py -q` -> **15 passed**, first run.
+
+| Property | How it was exercised |
+|---|---|
+| Concurrent reads during writes | 4 reader threads searching while the whole corpus is ingested; every returned hit re-resolved against the registry. No errors, no torn reads. |
+| Concurrent duplicate ingestion | 4 threads through a barrier ingesting one file -> **1 document**. Content-addressed ids make the race a no-op. |
+| Atomic index writes | no `.tmp` files survive a rebuild |
+| Rejected ingestion rollback | registry counts unchanged after a malformed-UTF-8 rejection |
+| Orphan chunks after delete | every surviving chunk resolves to a surviving document |
+| Corrupt vector manifest | overwritten with garbage; discarded, rebuilt, dense search still correct |
+| Truncated vector matrix | manifest/matrix length mismatch raises `IndexCorruptError` |
+| Wrong model in manifest | raises `IndexIncompatibleError` ("rebuild the index") |
+| Changing the embedding model | 64-dim index replaced by a 32-dim one; no mixing of vector spaces |
+| Wrong query dimension | refused rather than broadcast |
+| Hostile markup | a script tag in a document is stored verbatim, chunk offsets intact, never interpreted |
+| Control characters | NUL and ESC stripped by normalisation |
+
+---
+
+## 2026-09-19 - Milestone 8 (partial) - Query latency
+
+```
+uv run atlasrag bench --repeats 5
+
+corpus: 7 documents, 11 chunks
+machine: AMD64 Family 23 Model 24 Stepping 1, AuthenticAMD / Windows
+model: BAAI/bge-small-en-v1.5 (cpu, float32)
+queries: 15 x 5 repeats, top_k=5
+
+| mode   | n  | p50 ms | p95 ms | p99 ms | min ms | max ms |
+| bm25   | 75 |    0.3 |    0.4 |    0.7 |    0.2 |    1.2 |
+| dense  | 75 |   30.2 |   36.4 |   48.0 |   24.7 |   48.6 |
+| hybrid | 75 |   29.3 |   34.2 |   35.7 |   22.5 |   35.8 |
+```
+
+BM25 is roughly 100x cheaper than dense; the dense cost is the query-side forward pass, not the
+similarity search. Hybrid costs the same as dense, not the sum. Single-threaded, warm, 11
+chunks - **no throughput or capacity claim follows from this.** Analysis in EVALUATION.md
+section 6.
+
+---
+
+## 2026-09-19 - Milestone 3 - Generative provider, tested against a stub model
+
+`uv run pytest tests/integration/test_llm_provider.py -q` -> **17 passed**.
+
+A stub chat client drives every branch, including ones a cooperative model would rarely reach.
+The guarantees have to hold against a *hostile* model, not a helpful one.
+
+| Scripted model output | Result |
+|---|---|
+| a real sentence from the passage + `[1]` | answered, citation span verified against stored text |
+| an uncited claim | abstain `CITATION_VALIDATION_FAILED` |
+| a claim citing a passage that does not support it | abstain `CITATION_VALIDATION_FAILED` |
+| citation index `[99]` (out of range) | rejected |
+| one good sentence plus one fabricated one | good sentence kept, fabrication reported in `unsupported_sentences`, "Mars" absent from the answer |
+| `INSUFFICIENT_EVIDENCE` | abstain |
+| empty reply | abstain |
+| no evidence supplied | abstain **without calling the model** |
+| transport failure | `AnswerProviderError` raised - *not* an abstention |
+| a model fully captured by the injected ISO 27001 instruction | **abstains**; an uncited compliance claim cannot be returned |
+
+**A real bug found by these tests.** A model writing `Sentence text. [1]` - marker after the
+full stop - had the marker segmented into its own sentence, orphaning the citation and leaving
+the claim uncited, so a correctly-cited answer was rejected. Fixed by normalising trailing
+markers inside the sentence before segmentation.
+
+**Explicitly UNVERIFIED:** the provider has never run against a real model. No endpoint was
+available in this environment. Answer *quality* with a generative provider is unmeasured and no
+claim is made about it; the default provider remains extractive.
+
+Provider selection is reported, not silent:
+
+```
+ATLASRAG_ANSWER_PROVIDER=llm with no base_url/model ->
+  WARNING atlasrag.service: answer_provider=llm was requested but ATLASRAG_LLM_BASE_URL
+  and ATLASRAG_LLM_MODEL are not both set; using the extractive provider
+  /ready: answer_provider=extractive, answer_provider_requested=llm, answer_provider_note=...
+```
+
+---
+
+## 2026-09-19 - Quality gate after Milestones 3 and 7
+
+```
+uv run ruff check src tests          -> All checks passed!
+uv run ruff format --check src tests -> 62 files already formatted
+uv run mypy                          -> Success: no issues found in 50 source files
+uv run pytest -q                     -> 167 passed
+```
+
+---
+
 ## Remaining limitations at this point in the log
 
 - No container, no LLM provider, no PDF/HTML ingestion.

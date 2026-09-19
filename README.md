@@ -10,9 +10,11 @@ provider contains no language model at all.
 > [EVIDENCE.md](EVIDENCE.md) produced that result. Current capabilities and — just as
 > importantly — current limitations are in [STATUS.md](STATUS.md).
 
-**Status: Milestones 1, 2 and 6 executed.** CLI, HTTP API and web interface all work against
-the same service layer. Not yet done: optional LLM answering, PDF/HTML ingestion, container
-packaging, and any performance measurement.
+**Status: Milestones 1, 2, 3, 5 (experiment 1), 6 and 7 executed.** CLI, HTTP API and web
+interface all work against the same service layer. Not yet done: PDF/HTML ingestion, and a
+container build verified end to end. The generative provider's safety machinery is tested
+against a stub model but has **never been run against a real one** — see
+[STATUS.md](STATUS.md) for exactly what that does and does not establish.
 
 ---
 
@@ -147,8 +149,39 @@ uv run mypy
 uv run pytest -q
 ```
 
-Last executed: ruff clean · mypy strict clean (49 files) · 135 tests passed
-(unit, integration and end-to-end HTTP).
+Last executed: ruff clean · mypy strict clean (50 files) · **167 tests passed**
+(unit, integration, reliability, generative-provider and end-to-end HTTP).
+
+```bash
+uv run atlasrag bench --repeats 5    # query latency percentiles on your machine
+```
+
+Measured here: BM25 p50 **0.3 ms**, dense **30.2 ms**, hybrid **29.3 ms** on an 11-chunk
+corpus, single-threaded. The dense cost is the query-side forward pass, not the similarity
+search — so hybrid costs the same as dense rather than the sum of both. No throughput or
+capacity claim follows from this; see [EVALUATION.md §6](EVALUATION.md).
+
+## Answering
+
+The default provider is **extractive** and contains no language model: it selects verbatim
+source spans, so its citations are exact by construction and it cannot follow an instruction
+found in a document, because it cannot produce a token that is not already in the corpus.
+
+An optional generative provider exists because the extractive one has a *measured* limit — it
+fails paraphrased questions, since its support score is lexical. Its guarantee lives in code,
+not in the prompt:
+
+- evidence is passed inside a delimited block and the prompt states it is untrusted data;
+- **every generated sentence must cite a supplied passage and survive a post-generation support
+  check against it**, or the sentence is discarded;
+- if nothing survives, the response abstains rather than answering;
+- a provider timeout raises an error and is **never** reported as an abstention.
+
+Enable it with `ATLASRAG_ANSWER_PROVIDER=llm` plus `ATLASRAG_LLM_BASE_URL` and
+`ATLASRAG_LLM_MODEL` (any OpenAI-compatible endpoint). Without those, the service keeps the
+extractive provider and says so: `/ready` reports `answer_provider`,
+`answer_provider_requested` and a note explaining the difference. The fallback is part of the
+API contract, not a surprise.
 
 ## Architecture
 
@@ -183,8 +216,10 @@ torch. Concrete adapters are wired in `service.py` and nowhere else.
 ## Not supported
 
 No PDF, HTML, OCR, scanned documents, table extraction or layout understanding. No
-authentication, multi-tenancy or compliance claim. No container image. No performance claim —
-no latency, throughput or memory measurement has been taken.
+authentication, rate limiting, multi-tenancy or compliance claim — bind the API to localhost.
+Latency is measured; **throughput, concurrency under load and memory use are not**. Answer
+quality with a generative provider is unmeasured, because no real model endpoint was
+available here.
 
 The prompt-injection filter is a documented heuristic, not a guarantee; what is structural is
 that the default provider has no generation step and therefore cannot follow an instruction at

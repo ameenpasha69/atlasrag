@@ -14,7 +14,7 @@ This document states what has been tested, and — more importantly — what has
 | In scope | Out of scope |
 |---|---|
 | Malicious *content* inside ingested documents | A malicious operator of the machine |
-| Malformed, oversized or hostile filenames | Network attackers (there is no network surface yet) |
+| Malformed, oversized or hostile filenames | Network attackers — the API is unauthenticated and assumed to be bound to localhost |
 | Path traversal via upload filenames | Supply-chain compromise of pinned dependencies |
 | Index corruption and partial writes | Side channels, timing attacks |
 
@@ -102,12 +102,18 @@ not been audited line by line and is **UNVERIFIED** as a guarantee.
 
 ## Known gaps
 
-1. **No API-layer hardening** — no rate limiting, no request size caps, no CORS policy, no
-   authentication. The HTTP layer does not exist yet; all of this must be revisited when it does.
-2. **HTML escaping in the UI is UNVERIFIED** — there is no UI yet. Document text is attacker-
-   controlled and must be escaped when rendered.
-3. **Concurrency is untested.** SQLite runs in WAL mode behind a process-level lock, but no
-   concurrent read/write test has been executed.
+1. **No API-layer hardening.** The HTTP API has no authentication, no rate limiting, no
+   request-size cap and no CORS policy. Uploads are bounded only by the per-document size
+   limit, and nothing bounds the number of files in one request. Bind it to localhost; do not
+   expose it. This is the largest single gap in the project.
+2. **UI rendering is by `textContent`, not `innerHTML`.** Every value originating from a
+   document is inserted as a text node, so markup in an ingested file cannot become markup in
+   the page. A test ingests `<script>alert('xss')</script>` and asserts it is stored verbatim
+   with citation offsets intact. This has not been independently pen-tested.
+3. **Concurrency is tested, but only in-process.** Four reader threads searching while a
+   writer ingests produce no errors and no torn reads, and four threads racing to ingest the
+   same file produce one document rather than four. Multi-*process* access to one data
+   directory has not been tested and is not supported.
 4. **Dependencies are pinned but not scanned.** No SCA or vulnerability scanning runs.
 5. **No resource limits.** A large ingestion can exhaust memory on a 5.9 GB machine.
 

@@ -176,3 +176,52 @@ metric. `v1` is frozen; `v2` changes one label with the reasoning recorded in
 Torch is pinned to the CPU index explicitly so a CUDA build cannot be resolved by accident.
 **Trade-offs.** Reviewers need `uv`.
 **Revisit if.** A CI target cannot provide it.
+
+---
+
+### D-014 - The generative provider's guarantee lives in a post-generation check, not the prompt
+
+**Context.** EVALUATION.md section 4 measured the extractive baseline failing 2 of 15 test
+queries, both paraphrased, because its support score is lexical and paraphrase is where lexical
+overlap vanishes. That is a structural limit, so a generative option is justified by evidence
+rather than by fashion.
+**Chosen because.** A prompt can be argued out of its instructions; a check run on the output
+cannot. Every sentence the model produces must carry a citation marker resolving to a supplied
+passage, and must share a minimum fraction of that passage's content terms, or it is discarded.
+If nothing survives, the response abstains with `CITATION_VALIDATION_FAILED`.
+**Trade-offs.** The support check is lexical, so it will reject a *correct* paraphrase the model
+writes in its own words - the same weakness as the extractive provider, now acting as a filter
+rather than a selector. It is a floor against fabrication, not a paraphrase detector.
+**Alternatives.** LLM-as-judge support checking (adds a second model's errors and
+non-determinism, and the specification forbids LLM-generated relevance labels); trusting the
+prompt (not a guarantee); NLI entailment (another model, another failure surface).
+**Revisit if.** Evaluation with a real model shows the lexical floor rejecting good answers more
+often than it catches bad ones.
+
+---
+
+### D-015 - A missing model endpoint downgrades the provider visibly, never silently
+
+**Context.** The requirement is to work without an API key, and also to have no silent
+fallbacks. Those pull in opposite directions.
+**Chosen because.** The provider is chosen once, at construction, not per request. If
+`answer_provider=llm` is set without `llm_base_url` and `llm_model`, the service logs a warning
+and uses the extractive provider - and `/ready` then reports `answer_provider: extractive`,
+`answer_provider_requested: llm`, and a note explaining why. Every `AnswerResponse` also carries
+the provider that produced it. The fallback is part of the API contract rather than a surprise.
+**Trade-offs.** A misconfigured deployment starts successfully instead of failing fast. The
+mitigation is that readiness output makes the downgrade impossible to miss.
+**Revisit if.** An operator needs a hard failure instead; that would be a strict-mode setting,
+not a change of default.
+
+---
+
+### D-016 - A provider failure raises; it is never reported as an abstention
+
+**Context.** Abstention means the evidence did not support an answer. A timeout means the system
+broke.
+**Chosen because.** Conflating them lets an outage masquerade as epistemic caution, which is the
+most flattering possible way to hide a bug. `AnswerProviderError` is raised and surfaced as HTTP
+503; `AbstentionReason` has no member for it, so the type system prevents the confusion.
+**Trade-offs.** Callers must handle an error path as well as an abstention path.
+**Revisit if.** Never for the semantics; the transport shape may change.

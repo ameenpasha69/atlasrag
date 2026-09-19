@@ -45,11 +45,19 @@ ingestion, container packaging, and any performance measurement at all.
 | Citation → highlighted source | VERIFIED | modal marks the exact cited span |
 | Injected text flagged in results | VERIFIED | badge shown; passage stays searchable |
 | Mobile layout | VERIFIED | 375×812, no horizontal overflow |
-| LLM answer provider | NOT STARTED | — |
+| LLM answer provider (abstraction) | VERIFIED *against a stub model* | 17 tests; post-generation support check, fabrication rejected |
+| LLM provider against a real model | UNVERIFIED | no model endpoint available in this environment |
+| Reported (not silent) provider fallback | VERIFIED | `/ready` exposes requested vs active provider |
 | PDF / HTML ingestion | NOT STARTED | — |
-| Container packaging | NOT STARTED | — |
-| Concurrency / latency benchmark | NOT STARTED | — |
+| Container packaging | IN PROGRESS | Dockerfile written; build result recorded in EVIDENCE.md |
 | M5 experiment 1 (hybrid vs dense) | VERIFIED | executed on corpus v2 / dataset v3; EVALUATION.md §5a |
+| Concurrent read/write safety | VERIFIED | 4 reader threads during ingestion; no errors, no torn reads |
+| Concurrent duplicate ingestion | VERIFIED | 4 threads racing one file yield 1 document |
+| Atomic index writes | VERIFIED | no `.tmp` files survive a rebuild |
+| Corrupt vector index recovery | VERIFIED | discarded and rebuilt; truncated matrix detected |
+| Model/dimension incompatibility | VERIFIED | refused with a typed error, then rebuilt |
+| Hostile markup in documents | VERIFIED | stored verbatim, offsets intact, never interpreted |
+| Query latency benchmark | VERIFIED | bm25 p50 0.3 ms, dense 30.2 ms, hybrid 29.3 ms |
 
 ## Verified capabilities, stated precisely
 
@@ -79,8 +87,15 @@ ingestion, container packaging, and any performance measurement at all.
    SECURITY.md states what is and is not guaranteed.
 7. **Dense embeddings are not bit-reproducible** across BLAS or batch-size changes. Dense tests
    use tolerance-based assertions; only ids and BM25 are bit-exact.
-8. **No concurrency, latency or memory measurements exist.** No performance claim is made.
-9. **The API has no authentication, rate limiting or request-size cap.** Bind it to localhost.
+8. **The LLM provider has never been run against a real model.** Every branch is exercised
+   by a stub chat client, which is the right way to test the *safety machinery* — it can be
+   made hostile on demand — but it says nothing about answer quality. No real endpoint was
+   available in this environment, so answer quality with a generative provider is
+   **UNVERIFIED** and no claim is made about it. The default remains extractive.
+9. **Latency is measured; throughput and concurrency under load are not.** The benchmark is
+   single-threaded on an 11-chunk corpus. No capacity or scaling claim is supported.
+   Memory use has not been measured at all.
+10. **The API has no authentication, rate limiting or request-size cap.** Bind it to localhost.
    See SECURITY.md.
 
 ## Failed experiments and corrections
@@ -91,6 +106,7 @@ ingestion, container packaging, and any performance measurement at all.
 | Conflict detection on the top candidate only | Missed the 30-vs-90-day contradiction, because the top sentence was a framing sentence with no value. Fixed by scanning the credible band. |
 | Quoting any sentence | Markdown headings and injected instructions were quoted as answers. Fixed by a quotability filter. |
 | `min_bm25` / `min_cosine` thresholds | Did not discriminate at all. Kept at 0.0 and documented rather than tuned to look active. |
+| Citation marker after the full stop (`Sentence. [1]`) | **Real bug, found by testing.** Segmentation put the marker in its own sentence, orphaning the citation and leaving the claim uncited, so a correctly-cited answer was rejected. Fixed by normalising markers inside the sentence first. |
 | Adding `long` to the stopword list | **Not done.** It would likely fix q14, which is in the test split. Declined as tuning on test. |
 | Hypothesis: hybrid beats dense once near-duplicate identifiers are present | **Refuted.** The predicted dense failure occurred exactly as stated (q32, q33), but hybrid only reached parity, not superiority. EVALUATION.md §5a. |
 | Weighted RRF favouring BM25 on identifier queries | **Not run.** The only validating queries live in the test split; running it there would be tuning on test. Needs a calibration split containing identifier probes first. |

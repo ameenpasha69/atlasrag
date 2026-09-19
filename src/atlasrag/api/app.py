@@ -116,6 +116,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             embedding_model=service.settings.embedding_model,
             embedding_revision=service.settings.embedding_revision,
             config_fingerprint=service.settings.fingerprint(),
+            answer_provider=service.answerer.name,
+            answer_provider_requested=service.answer_provider_requested,
+            answer_provider_note=service.answer_provider_note,
         )
 
     @app.post("/documents", response_model=IngestResponse, tags=["documents"])

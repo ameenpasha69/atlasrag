@@ -305,6 +305,59 @@ def cmd_compare(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_bench(args: argparse.Namespace) -> int:
+    """Measure query latency on this machine, this corpus, this configuration.
+
+    Reports percentiles rather than a mean, and prints the corpus size alongside them, because
+    a latency figure without the corpus it was measured on is not a result.
+    """
+    import platform
+    import statistics
+    import time
+
+    service = _service(args)
+    service.indexes.ensure_ready()
+    dataset = _load_dataset(service, "test", args.dataset_version)
+    queries = list(dataset.queries)
+    documents, chunks = service.store.counts()
+
+    modes: tuple[SearchMode, ...] = ("bm25", "dense", "hybrid")
+
+    # Warm up: the first dense query pays for loading the model into memory, and including
+    # that one-off cost in the distribution would misrepresent steady-state latency.
+    service.search(SearchQuery(text=queries[0].text, mode="hybrid", top_k=args.top_k))
+
+    print(f"corpus: {documents} documents, {chunks} chunks")
+    print(f"machine: {platform.processor() or platform.machine()} / {platform.system()}")
+    print(f"model: {service.settings.embedding_model} (cpu, float32)")
+    print(f"queries: {len(queries)} x {args.repeats} repeats, top_k={args.top_k}\n")
+    print("| mode | n | p50 ms | p95 ms | p99 ms | min ms | max ms |")
+    print("|---|---|---|---|---|---|---|")
+
+    for mode in modes:
+        samples: list[float] = []
+        for _ in range(args.repeats):
+            for query in queries:
+                start = time.perf_counter()
+                service.search(
+                    SearchQuery(text=query.text, mode=mode, top_k=args.top_k, filters=query.filters)
+                )
+                samples.append((time.perf_counter() - start) * 1000.0)
+        samples.sort()
+        quantiles = statistics.quantiles(samples, n=100, method="inclusive")
+        print(
+            f"| {mode} | {len(samples)} | {statistics.median(samples):.1f} | "
+            f"{quantiles[94]:.1f} | {quantiles[98]:.1f} | {samples[0]:.1f} | {samples[-1]:.1f} |"
+        )
+
+    print(
+        "\nMeasured on one machine, one corpus, single-threaded, warm caches, no concurrency."
+        "\nThese numbers do not generalise to a larger corpus or to concurrent load."
+    )
+    service.close()
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="atlasrag", description="AtlasRAG command line")
     parser.add_argument("--data-dir", default="var", help="directory for the registry and indexes")
@@ -361,6 +414,12 @@ def build_parser() -> argparse.ArgumentParser:
     compare.add_argument("--dataset-version", default="v2")
     compare.add_argument("--k", type=int, default=3)
     compare.set_defaults(func=cmd_compare)
+
+    bench = sub.add_parser("bench", help="measure query latency percentiles on this machine")
+    bench.add_argument("--dataset-version", default="v2")
+    bench.add_argument("--repeats", type=int, default=5)
+    bench.add_argument("--top-k", type=int, default=5)
+    bench.set_defaults(func=cmd_bench)
 
     return parser
 
