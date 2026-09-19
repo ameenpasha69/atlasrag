@@ -14,7 +14,11 @@ import unicodedata
 from atlasrag.errors import MalformedDocumentError
 
 _CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
-_ZERO_WIDTH = re.compile(r"[​-‏  ﻿]")
+# Built from code points so this source file stays pure ASCII: the literal
+# characters are invisible and easy to corrupt in an editor.
+_ZERO_WIDTH = re.compile(
+    "[" + "".join(chr(c) for c in (*range(0x200B, 0x2010), 0x2028, 0x2029, 0xFEFF)) + "]"
+)
 _TRAILING_WS = re.compile(r"[ \t]+$", re.MULTILINE)
 _EXCESS_BLANK_LINES = re.compile(r"\n{3,}")
 

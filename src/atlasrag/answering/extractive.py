@@ -13,6 +13,7 @@ from dataclasses import dataclass
 
 from atlasrag.answering import abstention as abstain
 from atlasrag.answering.citations import build_citation
+from atlasrag.answering.injection import looks_like_injected_instruction
 from atlasrag.answering.stopwords import content_terms
 from atlasrag.answering.text_spans import sentence_spans
 from atlasrag.domain.models import (
@@ -41,8 +42,15 @@ _HEADING = re.compile(r"^#{1,6}\s")
 
 
 def _is_quotable(sentence: str) -> bool:
-    """Headings and fragments are navigational, not assertions, so they never answer anything."""
+    """Only factual assertions may be quoted as an answer.
+
+    Headings and fragments are navigational. Instruction-shaped text is an imperative aimed
+    at an assistant, not a claim about the world, and quoting it would let an untrusted
+    document put words in the system's mouth.
+    """
     if _HEADING.match(sentence):
+        return False
+    if looks_like_injected_instruction(sentence):
         return False
     return len(tokenize(sentence)) >= MIN_SENTENCE_TOKENS
 
@@ -137,9 +145,7 @@ class ExtractiveAnswerProvider:
         different values. Scans the whole credible band, not just the single best sentence:
         the top sentence is often a framing sentence carrying no value at all."""
         credible = [
-            c
-            for c in candidates
-            if c.support >= self._thresholds.min_support and c.values
+            c for c in candidates if c.support >= self._thresholds.min_support and c.values
         ][:CONFLICT_SCAN_DEPTH]
         if len(credible) < 2:
             return False, None
@@ -234,9 +240,7 @@ class ExtractiveAnswerProvider:
                 f"(first: {invalid[0].document_id[:12]} "
                 f"[{invalid[0].start_offset}:{invalid[0].end_offset}])."
             )
-            return self._abstain(
-                query, evidence, abstain.citation_failed(considered, detail)
-            )
+            return self._abstain(query, evidence, abstain.citation_failed(considered, detail))
 
         text = " ".join(c.sentence for c in selected)
         return AnswerResponse(

@@ -127,13 +127,18 @@ class VectorIndex:
         try:
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
-            raise IndexCorruptError(f"cannot read vector manifest at {manifest_path}: {exc}") from exc
+            raise IndexCorruptError(
+                f"cannot read vector manifest at {manifest_path}: {exc}"
+            ) from exc
 
         if manifest.get("format_version") != FORMAT_VERSION:
             raise IndexIncompatibleError(
                 f"vector index format {manifest.get('format_version')} != {FORMAT_VERSION}"
             )
-        if manifest.get("model_id") != expected_model or manifest.get("revision") != expected_revision:
+        if (
+            manifest.get("model_id") != expected_model
+            or manifest.get("revision") != expected_revision
+        ):
             raise IndexIncompatibleError(
                 f"vector index was built with {manifest.get('model_id')}@"
                 f"{str(manifest.get('revision'))[:12]} but configuration expects "

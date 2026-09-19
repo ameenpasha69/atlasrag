@@ -7,10 +7,14 @@ import json
 import logging
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from atlasrag.config import Settings
-from atlasrag.domain.models import SearchFilters, SearchQuery
+from atlasrag.domain.models import SearchFilters, SearchMode, SearchQuery
 from atlasrag.service import AtlasRagService
+
+if TYPE_CHECKING:
+    from atlasrag.evaluation.dataset import EvaluationDataset
 
 
 def _service(args: argparse.Namespace) -> AtlasRagService:
@@ -65,12 +69,12 @@ def cmd_delete(args: argparse.Namespace) -> int:
 
 def cmd_search(args: argparse.Namespace) -> int:
     service = _service(args)
-    query = SearchQuery(
-        text=args.query, mode=args.mode, top_k=args.top_k, filters=_filters(args)
-    )
+    query = SearchQuery(text=args.query, mode=args.mode, top_k=args.top_k, filters=_filters(args))
     outcome = service.search(query)
-    print(f"mode={query.mode}  hits={len(outcome.hits)}  "
-          f"best_bm25={outcome.max_bm25_score}  best_cosine={outcome.max_cosine_score}\n")
+    print(
+        f"mode={query.mode}  hits={len(outcome.hits)}  "
+        f"best_bm25={outcome.max_bm25_score}  best_cosine={outcome.max_cosine_score}\n"
+    )
     for hit in outcome.hits:
         contributions = "  ".join(
             f"{c.retriever}#{c.rank} raw={c.raw_score:.4f} rrf={c.rrf_term:.6f}"
@@ -86,9 +90,7 @@ def cmd_search(args: argparse.Namespace) -> int:
 
 def cmd_answer(args: argparse.Namespace) -> int:
     service = _service(args)
-    query = SearchQuery(
-        text=args.query, mode=args.mode, top_k=args.top_k, filters=_filters(args)
-    )
+    query = SearchQuery(text=args.query, mode=args.mode, top_k=args.top_k, filters=_filters(args))
     response = service.answer(query)
     if response.answered:
         print(f"ANSWER ({response.provider}, mode={response.mode}):\n{response.text}\n")
@@ -111,9 +113,13 @@ def cmd_rebuild(args: argparse.Namespace) -> int:
     service = _service(args)
     service.indexes.drop_persisted()
     service.indexes.rebuild_all()
-    print(f"lexical: {service.indexes.bm25.doc_count} chunks, "
-          f"{service.indexes.bm25.vocabulary_size} terms")
-    print(f"dense:   {service.indexes.vectors.size} vectors, dim {service.indexes.vectors.dimension}")
+    print(
+        f"lexical: {service.indexes.bm25.doc_count} chunks, "
+        f"{service.indexes.bm25.vocabulary_size} terms"
+    )
+    print(
+        f"dense:   {service.indexes.vectors.size} vectors, dim {service.indexes.vectors.dimension}"
+    )
     service.close()
     return 0
 
@@ -137,6 +143,111 @@ def cmd_stats(args: argparse.Namespace) -> int:
         payload["dense_vectors"] = service.indexes.vectors.size
         payload["dense_dimension"] = service.indexes.vectors.dimension
     print(json.dumps(payload, indent=2))
+    service.close()
+    return 0
+
+
+def _load_dataset(service: AtlasRagService, split: str, version: str = "v2") -> EvaluationDataset:
+    from atlasrag.evaluation.dataset import load_dataset
+
+    mapping = {d.original_filename: d.document_id for d in service.store.list_documents()}
+    return load_dataset(
+        Path("fixtures/eval") / version, split, source_to_document_id=mapping, version=version
+    )
+
+
+def cmd_evaluate(args: argparse.Namespace) -> int:
+    from atlasrag.evaluation.report import (
+        answering_table,
+        comparison_table,
+        failure_table,
+        per_category_table,
+    )
+    from atlasrag.evaluation.runner import build_run
+
+    service = _service(args)
+    service.indexes.ensure_ready()
+    dataset = _load_dataset(service, args.split, args.dataset_version)
+    titles = {d.document_id: d.title for d in service.store.list_documents()}
+
+    modes: tuple[SearchMode, ...] = ("bm25", "dense", "hybrid")
+    runs = [build_run(service, dataset, mode, k=args.k) for mode in modes]
+
+    print(f"dataset: {dataset.version}/{dataset.split}  queries: {len(dataset.queries)}")
+    print(f"config fingerprint: {service.settings.fingerprint()}")
+    print(
+        f"thresholds: support>={service.thresholds.min_support} "
+        f"bm25>={service.thresholds.min_bm25} cosine>={service.thresholds.min_cosine}\n"
+    )
+    print("## Retrieval: mode comparison\n")
+    print(comparison_table(runs))
+    print("\n## Answering\n")
+    print(answering_table(runs))
+    for run in runs:
+        print(f"\n## Per category: {run.mode}\n")
+        print(per_category_table(run))
+    hybrid = next(r for r in runs if r.mode == "hybrid")
+    print("\n## Retrieval failures (hybrid)\n")
+    print(failure_table(hybrid, titles))
+
+    from atlasrag.evaluation.runner import run_answering
+
+    decisions = run_answering(service, dataset, "hybrid", k=args.k).decisions
+    print("\n## Abstention decisions (hybrid)\n")
+    print("| query | category | expected | actual | verdict |")
+    print("|---|---|---|---|---|")
+    for query in dataset.queries:
+        abstained = decisions[query.query_id]
+        expected_abstain = not query.expected_answerable
+        verdict = (
+            "correct"
+            if abstained == expected_abstain
+            else ("FALSE ABSTENTION" if abstained else "MISSED ABSTENTION")
+        )
+        print(
+            f"| {query.query_id}: {query.text[:44]} | {query.category} | "
+            f"{'abstain' if expected_abstain else 'answer'} | "
+            f"{'abstain' if abstained else 'answer'} | {verdict} |"
+        )
+
+    if args.json:
+        Path(args.json).write_text(
+            json.dumps([r.model_dump(mode="json") for r in runs], indent=2), encoding="utf-8"
+        )
+        print(f"\nwrote {args.json}")
+    service.close()
+    return 0
+
+
+def cmd_calibrate(args: argparse.Namespace) -> int:
+    from atlasrag.evaluation.calibration import calibrate
+
+    service = _service(args)
+    service.indexes.ensure_ready()
+    dataset = _load_dataset(service, "calibration", args.dataset_version)
+    result = calibrate(service, dataset, args.mode, k=args.k)
+
+    print(
+        f"swept {result.evaluated} threshold combinations on "
+        f"{dataset.version}/calibration ({len(dataset.queries)} queries), mode={args.mode}\n"
+    )
+    print(
+        "| rank | min_support | min_bm25 | min_cosine | precision | recall | F1 | "
+        "false abstentions | missed abstentions |"
+    )
+    print("|---|---|---|---|---|---|---|---|---|")
+    for rank, point in enumerate(result.top, start=1):
+        t = point.thresholds
+        print(
+            f"| {rank} | {t.min_support:.2f} | {t.min_bm25:.2f} | {t.min_cosine:.2f} | "
+            f"{point.precision:.3f} | {point.recall:.3f} | {point.f1:.3f} | "
+            f"{point.false_abstentions} | {point.missed_abstentions} |"
+        )
+    best = result.best.thresholds
+    print("\nselected:")
+    print(f"  ATLASRAG_ABSTAIN_MIN_SUPPORT={best.min_support}")
+    print(f"  ATLASRAG_ABSTAIN_MIN_BM25_SCORE={best.min_bm25}")
+    print(f"  ATLASRAG_ABSTAIN_MIN_COSINE={best.min_cosine}")
     service.close()
     return 0
 
@@ -176,6 +287,21 @@ def build_parser() -> argparse.ArgumentParser:
 
     stats = sub.add_parser("stats", help="print registry and index statistics")
     stats.set_defaults(func=cmd_stats)
+
+    evaluate = sub.add_parser("evaluate", help="run the evaluation dataset and report metrics")
+    evaluate.add_argument("--split", choices=["test", "calibration"], default="test")
+    evaluate.add_argument("--dataset-version", default="v2")
+    evaluate.add_argument("--k", type=int, default=5)
+    evaluate.add_argument("--json", default=None, help="also write raw runs to this path")
+    evaluate.set_defaults(func=cmd_evaluate)
+
+    calibrate = sub.add_parser(
+        "calibrate", help="sweep abstention thresholds on the calibration split"
+    )
+    calibrate.add_argument("--mode", choices=["bm25", "dense", "hybrid"], default="hybrid")
+    calibrate.add_argument("--dataset-version", default="v2")
+    calibrate.add_argument("--k", type=int, default=5)
+    calibrate.set_defaults(func=cmd_calibrate)
 
     return parser
 

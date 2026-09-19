@@ -66,9 +66,7 @@ def below_threshold(considered: int, best_support: float, min_support: float) ->
 def conflicting(considered: int, detail: str) -> Abstention:
     return Abstention(
         reason=AbstentionReason.CONFLICTING_EVIDENCE,
-        explanation=(
-            "Sources disagree, so no single answer is reported. " + detail
-        ),
+        explanation=("Sources disagree, so no single answer is reported. " + detail),
         evidence_considered=considered,
     )
 

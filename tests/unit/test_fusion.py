@@ -106,9 +106,7 @@ def test_duplicate_chunk_from_one_retriever_is_counted_once() -> None:
 
 
 def test_weights_scale_contributions() -> None:
-    fused = reciprocal_rank_fusion(
-        [_bm25(), _dense()], k=60, top_k=10, weights={"dense": 2.0}
-    )
+    fused = reciprocal_rank_fusion([_bm25(), _dense()], k=60, top_k=10, weights={"dense": 2.0})
     scores = {f.chunk_id: f.fused_score for f in fused}
     assert scores["c3"] == pytest.approx(R63 + 2.0 * R61, abs=TOL)
     assert scores["c1"] == pytest.approx(R61 + 2.0 * R62, abs=TOL)

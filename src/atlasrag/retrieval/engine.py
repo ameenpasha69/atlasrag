@@ -98,6 +98,4 @@ class SearchEngine:
                     contributions=result.contributions,
                 )
             )
-        return SearchOutcome(
-            hits=hits, max_bm25_score=max_bm25, max_cosine_score=max_cosine
-        )
+        return SearchOutcome(hits=hits, max_bm25_score=max_bm25, max_cosine_score=max_cosine)

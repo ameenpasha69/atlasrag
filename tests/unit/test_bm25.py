@@ -85,7 +85,9 @@ def test_zero_scores_are_not_returned(index: BM25Index) -> None:
 
 
 def test_filter_restricts_to_allowed_documents(index: BM25Index) -> None:
-    assert [cid for cid, _ in index.search("quick", top_k=10, allowed_document_ids={"d1"})] == ["c1"]
+    assert [cid for cid, _ in index.search("quick", top_k=10, allowed_document_ids={"d1"})] == [
+        "c1"
+    ]
     assert index.search("quick", top_k=10, allowed_document_ids=set()) == []
 
 

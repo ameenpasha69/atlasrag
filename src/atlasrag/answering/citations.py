@@ -34,9 +34,7 @@ def build_citation(
     snippet: str,
     provenance: list[RankContribution] | None = None,
 ) -> Citation:
-    validated = verify_span(
-        store, document_id=document_id, start=start, end=end, snippet=snippet
-    )
+    validated = verify_span(store, document_id=document_id, start=start, end=end, snippet=snippet)
     return Citation(
         document_id=document_id,
         chunk_id=chunk_id,

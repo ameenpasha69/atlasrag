@@ -46,9 +46,7 @@ def test_contributions_expose_full_provenance(corpus_service: AtlasRagService) -
         for contribution in hit.contributions:
             assert contribution.retriever in {"bm25", "dense"}
             assert contribution.rank >= 1
-            assert contribution.rrf_term == pytest.approx(
-                1.0 / (60 + contribution.rank), abs=1e-12
-            )
+            assert contribution.rrf_term == pytest.approx(1.0 / (60 + contribution.rank), abs=1e-12)
         assert hit.fused_score == pytest.approx(
             sum(c.rrf_term * c.weight for c in hit.contributions), abs=1e-12
         )
@@ -141,9 +139,7 @@ class TestDeletion:
         assert corpus_service.delete_document(target.document_id) is True
 
         for mode in ("bm25", "dense", "hybrid"):
-            outcome = corpus_service.search(
-                SearchQuery(text=RARE_IDENTIFIER, mode=mode, top_k=10)
-            )
+            outcome = corpus_service.search(SearchQuery(text=RARE_IDENTIFIER, mode=mode, top_k=10))
             assert target.document_id not in {h.document_id for h in outcome.hits}
 
         assert corpus_service.get_document(target.document_id) is None

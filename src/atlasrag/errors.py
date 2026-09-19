@@ -50,15 +50,15 @@ class DocumentNotFoundError(StorageError):
     pass
 
 
-class IndexError_(AtlasRagError):
-    """Index-layer failure. Trailing underscore avoids shadowing builtins.IndexError."""
+class IndexLayerError(AtlasRagError):
+    """Index-layer failure. Named to avoid shadowing builtins.IndexError."""
 
 
-class IndexIncompatibleError(IndexError_):
+class IndexIncompatibleError(IndexLayerError):
     """Persisted index was built with a different model, dimension or version."""
 
 
-class IndexCorruptError(IndexError_):
+class IndexCorruptError(IndexLayerError):
     pass
 
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from itertools import pairwise
 
 import pytest
 
@@ -64,9 +65,7 @@ class TestDocumentIds:
         checksum = text_checksum("x")
         assert derive_document_id(
             source_key="a.md", content_sha256=checksum, ingestion_version="1"
-        ) != derive_document_id(
-            source_key="a.md", content_sha256=checksum, ingestion_version="2"
-        )
+        ) != derive_document_id(source_key="a.md", content_sha256=checksum, ingestion_version="2")
 
 
 class TestChunkIds:
@@ -135,7 +134,7 @@ class TestChunking:
 
     def test_consecutive_chunks_overlap_or_touch(self, cfg: ChunkingConfig) -> None:
         chunks = chunk_document(make_document(), cfg)
-        for previous, current in zip(chunks, chunks[1:], strict=False):
+        for previous, current in pairwise(chunks):
             assert current.start_offset <= previous.end_offset
 
     def test_short_document_is_a_single_chunk(self, cfg: ChunkingConfig) -> None:

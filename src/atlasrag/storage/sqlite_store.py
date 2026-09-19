@@ -268,7 +268,7 @@ class SqliteDocumentStore:
         placeholders = ",".join("?" * len(chunk_ids))
         with self._lock:
             rows = self._conn.execute(
-                f"SELECT * FROM chunks WHERE chunk_id IN ({placeholders})",  # noqa: S608
+                f"SELECT * FROM chunks WHERE chunk_id IN ({placeholders})",
                 tuple(chunk_ids),
             ).fetchall()
         return {r["chunk_id"]: self._row_to_chunk(r) for r in rows}
@@ -323,7 +323,7 @@ class SqliteDocumentStore:
         where = " AND ".join(clauses)
         with self._lock:
             rows = self._conn.execute(
-                f"SELECT document_id FROM documents WHERE {where}",  # noqa: S608
+                f"SELECT document_id FROM documents WHERE {where}",
                 tuple(params),
             ).fetchall()
         return {r["document_id"] for r in rows}

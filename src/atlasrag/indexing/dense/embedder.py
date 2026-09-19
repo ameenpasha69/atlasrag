@@ -70,11 +70,11 @@ class BgeEmbedder:
             raise ModelUnavailableError(f"torch/transformers unavailable: {exc}") from exc
 
         try:
-            self._tokenizer = AutoTokenizer.from_pretrained(
+            self._tokenizer = AutoTokenizer.from_pretrained(  # type: ignore[no-untyped-call]
                 self._model_id, revision=self._revision
             )
             model = AutoModel.from_pretrained(self._model_id, revision=self._revision)
-        except Exception as exc:  # noqa: BLE001 - surfaced as a typed error below
+        except Exception as exc:
             raise ModelUnavailableError(
                 f"could not load {self._model_id}@{self._revision[:12]}: {exc}"
             ) from exc
@@ -108,7 +108,8 @@ class BgeEmbedder:
 
         if not vectors:
             return np.zeros((0, self.dimension), dtype=np.float32)
-        return np.vstack(vectors)
+        stacked: np.ndarray = np.vstack(vectors)
+        return stacked
 
     def embed_documents(self, texts: Sequence[str]) -> np.ndarray:
         if not texts:
@@ -122,4 +123,5 @@ class BgeEmbedder:
 
     def embed_query(self, text: str) -> np.ndarray:
         matrix = self._encode([self._query_instruction + text])
-        return matrix[0]
+        row: np.ndarray = matrix[0]
+        return row

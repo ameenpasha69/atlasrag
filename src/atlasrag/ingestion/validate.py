@@ -21,7 +21,10 @@ _MEDIA_TYPES = {
 
 _UNSAFE_NAME = re.compile(r"[\x00-\x1f<>:\"/\\|?*]")
 _WINDOWS_RESERVED = {
-    "con", "prn", "aux", "nul",
+    "con",
+    "prn",
+    "aux",
+    "nul",
     *(f"com{i}" for i in range(1, 10)),
     *(f"lpt{i}" for i in range(1, 10)),
 }
@@ -47,7 +50,11 @@ def safe_filename(candidate: str) -> str:
 def resolve_within(base: Path, candidate: Path) -> Path:
     """Resolve `candidate` and refuse it if it escapes `base`."""
     base_resolved = base.resolve()
-    target = (base_resolved / candidate).resolve() if not candidate.is_absolute() else candidate.resolve()
+    target = (
+        (base_resolved / candidate).resolve()
+        if not candidate.is_absolute()
+        else candidate.resolve()
+    )
     if base_resolved != target and base_resolved not in target.parents:
         raise UnsafePathError(f"path escapes the permitted directory: {candidate}")
     return target

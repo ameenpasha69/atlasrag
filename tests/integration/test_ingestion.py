@@ -28,9 +28,7 @@ def test_ids_are_identical_across_two_independent_databases(tmp_path: Path) -> N
     """Acceptance criterion 1: same input and configuration, same ids."""
     ids: list[tuple[str, tuple[str, ...]]] = []
     for name in ("a", "b"):
-        service = AtlasRagService(
-            Settings(data_dir=tmp_path / name), embedder=HashEmbedder()
-        )
+        service = AtlasRagService(Settings(data_dir=tmp_path / name), embedder=HashEmbedder())
         result = service.ingest_path(SAMPLE)
         assert result.document_id is not None
         chunks = service.store.chunks_for_document(result.document_id)
@@ -53,9 +51,7 @@ def test_identical_content_under_a_different_name_is_reported_as_duplicate(
     assert service.store.counts()[0] == 1
 
 
-def test_editing_a_file_creates_a_new_document_id(
-    service: AtlasRagService, tmp_path: Path
-) -> None:
+def test_editing_a_file_creates_a_new_document_id(service: AtlasRagService, tmp_path: Path) -> None:
     path = tmp_path / "notes.md"
     path.write_text("# Notes\n\nOriginal body sentence here.", encoding="utf-8")
     first = service.ingest_path(path)

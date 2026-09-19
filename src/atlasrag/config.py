@@ -49,12 +49,15 @@ class Settings(BaseSettings):
 
     rrf_k: int = Field(default=60, ge=1)
 
-    # PROVISIONAL placeholders, not calibrated. Milestone 2 runs a sweep over
-    # fixtures/eval/v1/calibration.jsonl and replaces these with measured values; until
-    # EVALUATION.md records that run, treat every abstention threshold as UNVERIFIED.
-    abstain_min_support: float = Field(default=0.35, ge=0.0, le=1.0)
-    abstain_min_bm25_score: float = Field(default=0.5, ge=0.0)
-    abstain_min_cosine: float = Field(default=0.55, ge=0.0, le=1.0)
+    # Calibrated by `atlasrag calibrate` over 264 grid points on fixtures/eval/v1/
+    # calibration.jsonl (13 queries, hybrid mode); see EVALUATION.md for the executed sweep.
+    # The BM25 and cosine floors did not discriminate — every grid point tied on them — so
+    # they are calibrated to 0.0 and the support threshold carries the abstention decision.
+    # A consequence, recorded in STATUS.md: AbstentionReason.OUT_OF_SCOPE is unreachable at
+    # these values, and weak-evidence cases surface as BELOW_THRESHOLD instead.
+    abstain_min_support: float = Field(default=0.25, ge=0.0, le=1.0)
+    abstain_min_bm25_score: float = Field(default=0.0, ge=0.0)
+    abstain_min_cosine: float = Field(default=0.0, ge=0.0, le=1.0)
     evidence_top_n: int = Field(default=5, ge=1, le=20)
 
     answer_provider: Literal["extractive", "llm"] = "extractive"
