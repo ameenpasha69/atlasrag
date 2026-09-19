@@ -252,6 +252,59 @@ def cmd_calibrate(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_compare(args: argparse.Namespace) -> int:
+    """Per-query win/loss table across retrieval modes.
+
+    Aggregate metrics can hide the fact that two modes fail *different* queries while failing
+    the same *number* of them, which looks like equivalence and is not.
+    """
+    from atlasrag.evaluation.metrics import dedupe_documents, reciprocal_rank
+
+    service = _service(args)
+    service.indexes.ensure_ready()
+    dataset = _load_dataset(service, args.split, args.dataset_version)
+    modes: tuple[SearchMode, ...] = ("bm25", "dense", "hybrid")
+
+    print(f"dataset: {dataset.version}/{dataset.split}  k={args.k}")
+    print("\nreciprocal rank per query (1.000 = correct document at rank 1, 0 = missed)\n")
+    print("| query | category | bm25 | dense | hybrid | note |")
+    print("|---|---|---|---|---|---|")
+
+    totals = dict.fromkeys(modes, 0.0)
+    counted = 0
+    for query in dataset.queries:
+        relevant = dataset.relevant(query.query_id)
+        if not relevant:
+            continue
+        counted += 1
+        scores: dict[str, float] = {}
+        for mode in modes:
+            outcome = service.search(
+                SearchQuery(text=query.text, mode=mode, top_k=args.k, filters=query.filters)
+            )
+            ranked = dedupe_documents([h.document_id for h in outcome.hits])
+            scores[mode] = reciprocal_rank(ranked, relevant)
+            totals[mode] += scores[mode]
+
+        best = max(scores.values())
+        worst = min(scores.values())
+        note = ""
+        if best > worst:
+            winners = [m for m, v in scores.items() if v == best and m != "hybrid"]
+            note = "split: " + ", ".join(winners) + " ahead"
+        print(
+            f"| {query.query_id}: {query.text[:40]} | {query.category} | "
+            + " | ".join(f"{scores[m]:.3f}" for m in modes)
+            + f" | {note} |"
+        )
+
+    print(
+        "| **mean MRR** | | " + " | ".join(f"**{totals[m] / counted:.3f}**" for m in modes) + " | |"
+    )
+    service.close()
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="atlasrag", description="AtlasRAG command line")
     parser.add_argument("--data-dir", default="var", help="directory for the registry and indexes")
@@ -302,6 +355,12 @@ def build_parser() -> argparse.ArgumentParser:
     calibrate.add_argument("--dataset-version", default="v2")
     calibrate.add_argument("--k", type=int, default=5)
     calibrate.set_defaults(func=cmd_calibrate)
+
+    compare = sub.add_parser("compare", help="per-query win/loss table across modes")
+    compare.add_argument("--split", choices=["test", "calibration"], default="test")
+    compare.add_argument("--dataset-version", default="v2")
+    compare.add_argument("--k", type=int, default=3)
+    compare.set_defaults(func=cmd_compare)
 
     return parser
 

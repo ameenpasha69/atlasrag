@@ -51,3 +51,30 @@ in the test split and that change would be tuning on test. It is recorded as an 
 in EVALUATION.md instead.
 
 Judgments and the calibration split are byte-identical to v1.
+
+---
+
+## v3 — 2026-09-19 · corpus v2 · hybrid-fusion experiment
+
+**Purpose.** v2 could not distinguish hybrid fusion from dense retrieval alone, because it
+contained no query type on which dense was expected to fail. v3 exists to supply that
+missing evidence rather than to improve any score.
+
+**Corpus.** `fixtures/corpus/v2/` = `v1` unchanged, plus three added documents. No existing
+document was edited, so any change in an existing query's result comes from added competition
+only.
+
+| Added document | Role |
+|---|---|
+| `asset-register.md` | asset tags differing by one character from those in v1 documents (`MG-GW-7742` vs `MG-GW-7741`, `CAL-X9-4421B` vs `CAL-X7-4421B`) |
+| `error-codes.md` | `ERR-4417`, `ERR-7414` |
+| `buffer-troubleshooting.md` | `ERR-4471`, `ERR-7441` — transpositions of the two above, deliberately placed in a *different* document so the probe bites at document granularity |
+
+**Queries added to the test split.** q29–q33 are near-duplicate and transposed-digit probes,
+the query types where dense retrieval is predicted to fail. q34 is a semantic control over the
+same new documents, where dense is predicted to win.
+
+**Hypothesis, stated before running.** Dense will confuse near-identical identifiers; BM25 will
+resolve them exactly; hybrid will beat dense once such queries are present.
+
+Calibration split is byte-identical to v2. Judgments are v2's plus six.

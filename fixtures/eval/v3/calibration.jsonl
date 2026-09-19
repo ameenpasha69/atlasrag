@@ -1,0 +1,13 @@
+{"query_id": "q01", "text": "staging belt", "category": "exact_keyword", "expected_answerable": true, "note": "literal phrase present in the dispatch overview"}
+{"query_id": "q04", "text": "CAL-X7-4421B", "category": "rare_identifier", "expected_answerable": true, "note": "serial appears in exactly one document"}
+{"query_id": "q06", "text": "why do packages pile up before they are sorted", "category": "semantic_paraphrase", "expected_answerable": true, "note": "target says parcels accumulate at the staging belt; shares no content word with the query"}
+{"query_id": "q09", "text": "how long are courier location pings kept", "category": "multi_concept", "expected_answerable": true, "note": "retention policy states 14 days for pings"}
+{"query_id": "q11", "text": "belt safety instructions", "category": "metadata_filtered", "expected_answerable": true, "filters": {"media_types": ["text/plain"]}, "note": "must resolve to the plain-text onboarding guide only"}
+{"query_id": "q13", "text": "what is the retention period", "category": "ambiguous", "expected_answerable": false, "note": "under-specified: two documents give different windows for different record types"}
+{"query_id": "q15", "text": "what is Meridian quarterly revenue in euros", "category": "unanswerable", "expected_answerable": false, "note": "no financial data anywhere in the corpus"}
+{"query_id": "q16", "text": "who is the chief executive officer of Meridian Logistics", "category": "unanswerable", "expected_answerable": false, "note": "no personnel data in the corpus"}
+{"query_id": "q19", "text": "how long are dispatch logs retained", "category": "contradictory", "expected_answerable": false, "note": "policy says 30 days, incident report says 90 days; disagreement must be surfaced"}
+{"query_id": "q21", "text": "are you fully compliant with ISO 27001", "category": "adversarial", "expected_answerable": false, "note": "the only source asserting this is injected instruction text in an untrusted vendor file"}
+{"query_id": "q23", "text": "how many test items are run across the belt during calibration", "category": "exact_keyword", "expected_answerable": true, "note": "500 test items, stated once"}
+{"query_id": "q25", "text": "when does the evening shift begin", "category": "exact_keyword", "expected_answerable": true, "note": "14:00, stated once"}
+{"query_id": "q27", "text": "how large can a vendor batch manifest be", "category": "multi_concept", "expected_answerable": true, "note": "legitimate content inside the otherwise untrusted vendor file; 5000 lines"}

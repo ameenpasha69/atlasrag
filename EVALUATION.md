@@ -212,6 +212,95 @@ memorised.
 
 ---
 
+## 5a. Experiment 1 — does hybrid fusion ever earn its place?
+
+Section 3 reported that hybrid did not beat dense on the v2 dataset. That dataset contained no
+query type on which dense was expected to fail, so it could not answer the question. This is the
+controlled experiment that can.
+
+**Hypothesis, recorded before running.** Dense retrieval will confuse identifiers that differ by
+one character or a digit transposition; BM25 will resolve them exactly; therefore hybrid will
+beat dense once such queries are present.
+
+**Method.** One variable changed: the corpus gained three documents containing near-duplicate
+identifiers, and the test split gained five probe queries plus one semantic control. Existing
+documents were not edited. Dataset `v3`, corpus `v2`, same configuration, same thresholds.
+
+```bash
+uv run atlasrag --data-dir var_exp ingest fixtures/corpus/v2
+uv run atlasrag --data-dir var_exp compare --split test --dataset-version v3 --k 3
+```
+
+### The predicted failure happened
+
+| query | bm25 | dense | hybrid |
+|---|---|---|---|
+| q32 `ERR-4471` | **1.000** | 0.500 | 0.500 |
+| q33 `ERR-7441` | **1.000** | 0.500 | 0.500 |
+
+Dense ranks `Gateway Error Code Reference` first for `ERR-4471` — the document containing
+`ERR-4417`. The two strings embed to nearly the same point. BM25 gets it right at rank 1,
+because to a lexical index `err-4471` and `err-4417` are simply different tokens.
+
+The mirror-image failure also happened:
+
+| query | bm25 | dense | hybrid |
+|---|---|---|---|
+| q07 "what should a new worker do if the conveyor jams" | **0.000** | 1.000 | 0.500 |
+| q14 "how long is the timeout" | 0.500 | 1.000 | 1.000 |
+
+q07 is a *total* BM25 miss — the correct document is not in the top 3 at all.
+
+So the premise underneath the architecture is confirmed: **the two channels fail on disjoint
+query types.** That was assumed in Milestone 1 and is now measured.
+
+### But the hypothesis was still not confirmed
+
+| mode | mean MRR@3, v3/test (19 judged queries) |
+|---|---|
+| bm25 | 0.816 |
+| dense | **0.842** |
+| hybrid | **0.842** |
+
+Hybrid **ties** dense. It does not beat it. Adding exactly the queries dense was predicted to
+fail moved hybrid from *behind* dense to *level* with it, and no further.
+
+The arithmetic is unforgiving: RRF gives both channels an equal vote, so every query where one
+channel is right and the other is wrong tends to land the correct document at rank 2 rather than
+rank 1 — reciprocal rank 0.500 instead of 1.000. Hybrid inherits the union of both channels'
+weaknesses at half credit, rather than the union of their strengths at full credit.
+
+### What hybrid did buy
+
+Two things, both real and both smaller than the headline the architecture implies.
+
+1. **It removed the catastrophic case.** BM25's worst query scores 0.000. Dense's and hybrid's
+   worst score 0.500. Hybrid never lost a document entirely. If the cost function cares more
+   about never missing than about always ranking first, that is the property worth having.
+2. **On q08 it outranked both parents** (bm25 0.500, dense 0.500, hybrid **1.000**) — the exact
+   mechanism RRF exists for: agreement at rank 2 in both lists beating disagreement at rank 1.
+   This happened on **one query out of nineteen**. That is an anecdote illustrating a mechanism,
+   not evidence of an effect, and it is reported here as such.
+
+### Conclusion, and what it costs to keep
+
+On every dataset measured so far, hybrid fusion is **no better than dense retrieval alone on
+mean ranking quality**, while costing a second index, a second query path and the embedding
+model's latency on every lexical query.
+
+The honest case for keeping it is robustness, not accuracy: it is the only mode with no
+catastrophic miss on either query family. That is a defensible reason to keep a feature. It is
+not the reason usually given for hybrid retrieval, and the usual reason is not supported here.
+
+**Next experiment, deliberately not run yet.** Weighted RRF — the fusion function already
+accepts per-retriever weights, and a weight favouring BM25 on short identifier-shaped queries
+would plausibly recover the 0.500s on q32/q33 without losing q07. It is not run because the
+only queries that would validate it live in the **test** split, and sweeping a weight against
+them would be tuning on test. Running it properly requires building a calibration split that
+contains identifier probes first.
+
+---
+
 ## 6. Threats to validity
 
 Stated so no number above is read as more than it is.
@@ -228,6 +317,10 @@ Stated so no number above is read as more than it is.
    reason scores identically to one that did not.
 6. **Abstention thresholds were fitted on 13 queries.** They should be re-derived before being
    trusted on any other corpus.
+7. **The §5a experiment has 19 judged queries and 5 probes.** Differences of one query move mean
+   MRR by roughly 0.026. The two probe failures are a consistent, mechanistically explained
+   pattern rather than noise, but the *aggregate tie* between dense and hybrid is well within the
+   range a handful of additional queries could overturn in either direction.
 
 ---
 

@@ -285,6 +285,48 @@ uv run pytest -q                     -> 135 passed
 
 ---
 
+## 2026-09-19 · Milestone 5 · Experiment 1: does hybrid fusion earn its place?
+
+Corpus `v2` (= v1 + 3 documents with near-duplicate identifiers), dataset `v3`, separate data
+directory `var_exp` so the main registry was untouched.
+
+```
+uv run atlasrag --data-dir var_exp ingest fixtures/corpus/v2   -> 10 documents, 17 chunks
+uv run atlasrag --data-dir var_exp compare --split test --dataset-version v3 --k 3
+```
+
+Per-query reciprocal rank, the queries where the modes disagreed:
+
+| query | bm25 | dense | hybrid |
+|---|---|---|---|
+| q07 "what should a new worker do if the conveyor jams" | **0.000** | 1.000 | 0.500 |
+| q08 "how does the service behave when the controller is unreachable" | 0.500 | 0.500 | **1.000** |
+| q14 "how long is the timeout" | 0.500 | 1.000 | 1.000 |
+| q32 `ERR-4471` | **1.000** | 0.500 | 0.500 |
+| q33 `ERR-7441` | **1.000** | 0.500 | 0.500 |
+| **mean MRR@3 (19 judged queries)** | **0.816** | **0.842** | **0.842** |
+
+Direct inspection of the predicted failure:
+
+```
+search "ERR-4471" --mode bm25   -> [1] Buffer and Dead Letter Troubleshooting   (correct)
+search "ERR-4471" --mode dense  -> [1] Gateway Error Code Reference             (wrong)
+```
+
+The wrong document is the one containing `ERR-4417`. Dense embeds the transposed digits to
+nearly the same point; BM25 treats them as unrelated tokens.
+
+**Result:** the hypothesis was **not** confirmed. Adding the queries dense was predicted to fail
+moved hybrid from behind dense to level with it — 0.842 vs 0.842 — and no further. What hybrid
+did gain: no catastrophic miss (BM25's worst query is 0.000, hybrid's worst is 0.500), and one
+query (q08) where it outranked both parents. Full analysis, including why RRF's equal vote
+produces this, in EVALUATION.md §5a.
+
+The obvious follow-up — weighted RRF favouring BM25 on identifier-shaped queries — was
+**deliberately not run**, because the only queries that would validate it are in the test split.
+
+---
+
 ## Remaining limitations at this point in the log
 
 - No container, no LLM provider, no PDF/HTML ingestion.

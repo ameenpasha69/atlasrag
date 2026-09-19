@@ -43,13 +43,29 @@ vector search handles badly.
 
 ## An honest headline result
 
-On the current evaluation set, **hybrid fusion does not beat dense retrieval alone**
-(nDCG@3 0.943 vs 1.000). Hybrid does beat BM25 on recall. The corpus is small and
-paraphrase-heavy, which structurally favours dense, and the case for fusion rests on query
-types this dataset is too small to contain. That analysis — and the reasons not to
-over-read it — is in [EVALUATION.md](EVALUATION.md).
+**Hybrid fusion does not beat dense retrieval alone on any dataset measured here.**
 
-Reporting this rather than burying it is the point of the project.
+On the first dataset it was behind (nDCG@3 0.943 vs 1.000). The obvious objection was that the
+corpus contained no query type where dense should fail — so a second dataset was built
+specifically to contain them: asset tags differing by one character, error codes differing by a
+digit transposition, each pair split across different documents.
+
+The predicted failure happened exactly as stated. Asked for `ERR-4471`, dense returns the
+document containing `ERR-4417`; BM25 gets it right at rank 1. The reverse also happened: on a
+paraphrased question BM25 missed the correct document entirely (reciprocal rank 0.000) while
+dense scored 1.000. **The two channels genuinely fail on disjoint query types.**
+
+And hybrid still only reached *parity* — mean MRR 0.842 against dense's 0.842. RRF gives both
+channels an equal vote, so a query one channel gets right and the other gets wrong tends to land
+the answer at rank 2 rather than rank 1.
+
+What fusion did buy is narrower than the usual claim: **robustness, not accuracy.** It is the
+only mode with no catastrophic miss on either query family. That is a real reason to keep it,
+and it is not the reason hybrid retrieval is normally sold on.
+
+The experiment, including the follow-up deliberately *not* run because its validating queries
+are in the test split, is in [EVALUATION.md §5a](EVALUATION.md). Reporting this rather than
+burying it is the point of the project.
 
 ## Quick start
 
@@ -106,10 +122,22 @@ containing instruction-like text, and displays abstentions with their reason.
 ```bash
 uv run atlasrag calibrate                                        # sweep on the calibration split
 uv run atlasrag evaluate --split test --k 5 --dataset-version v2 # report on the held-out split
+uv run atlasrag compare  --split test --k 3 --dataset-version v2 # per-query win/loss by mode
 ```
 
-Thresholds are fitted on `fixtures/eval/v2/calibration.jsonl` and reported on
-`test.jsonl`, which the sweep never sees.
+Thresholds are fitted on `fixtures/eval/v2/calibration.jsonl` and reported on `test.jsonl`,
+which the sweep never sees. `compare` exists because aggregate metrics hid the fact that two
+modes were failing *different* queries while failing the same *number* of them.
+
+To reproduce the fusion experiment on its own corpus, in its own data directory:
+
+```bash
+uv run atlasrag --data-dir var_exp ingest fixtures/corpus/v2
+uv run atlasrag --data-dir var_exp compare --split test --dataset-version v3 --k 3
+```
+
+Datasets are versioned and never edited in place; every change is justified in
+[`fixtures/eval/CHANGES.md`](fixtures/eval/CHANGES.md).
 
 ## Verification
 

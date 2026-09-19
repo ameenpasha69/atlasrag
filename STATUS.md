@@ -1,6 +1,6 @@
 # AtlasRAG — Status
 
-Updated: 2026-09-19 · Milestones 1, 2 and 6 executed
+Updated: 2026-09-19 · Milestones 1, 2, 6 executed; Milestone 5 experiment 1 executed
 
 A capability is `VERIFIED` only if a command in [EVIDENCE.md](EVIDENCE.md) produced that
 result on this machine. Nothing here is aspirational.
@@ -49,6 +49,7 @@ ingestion, container packaging, and any performance measurement at all.
 | PDF / HTML ingestion | NOT STARTED | — |
 | Container packaging | NOT STARTED | — |
 | Concurrency / latency benchmark | NOT STARTED | — |
+| M5 experiment 1 (hybrid vs dense) | VERIFIED | executed on corpus v2 / dataset v3; EVALUATION.md §5a |
 
 ## Verified capabilities, stated precisely
 
@@ -61,8 +62,10 @@ ingestion, container packaging, and any performance measurement at all.
 
 ## Known limitations
 
-1. **Hybrid fusion does not beat dense alone on the current dataset** (nDCG@3 0.943 vs 1.000).
-   Measured, not suspected. EVALUATION.md §3.
+1. **Hybrid fusion does not beat dense alone on any dataset measured.** On v2 it is behind
+   (nDCG@3 0.943 vs 1.000); on v3 — built specifically to contain the queries dense should fail
+   — it ties at mean MRR 0.842. Its measured benefit is robustness (no catastrophic miss), not
+   ranking quality. Measured, not suspected. EVALUATION.md §3 and §5a.
 2. **The extractive answerer fails paraphrased questions** — 2 of 15 test queries. Support
    scoring is lexical, so it is weakest exactly where dense retrieval is strongest.
 3. **Ambiguous questions are not detected.** Conflict detection is cross-document only; three
@@ -89,13 +92,14 @@ ingestion, container packaging, and any performance measurement at all.
 | Quoting any sentence | Markdown headings and injected instructions were quoted as answers. Fixed by a quotability filter. |
 | `min_bm25` / `min_cosine` thresholds | Did not discriminate at all. Kept at 0.0 and documented rather than tuned to look active. |
 | Adding `long` to the stopword list | **Not done.** It would likely fix q14, which is in the test split. Declined as tuning on test. |
+| Hypothesis: hybrid beats dense once near-duplicate identifiers are present | **Refuted.** The predicted dense failure occurred exactly as stated (q32, q33), but hybrid only reached parity, not superiority. EVALUATION.md §5a. |
+| Weighted RRF favouring BM25 on identifier queries | **Not run.** The only validating queries live in the test split; running it there would be tuning on test. Needs a calibration split containing identifier probes first. |
 
 ## Next smallest step
 
-Milestone 5, first experiment: build the evidence that would justify hybrid fusion. The current
-dataset cannot distinguish it from dense alone, so the next step is adding query types where
-dense is expected to fail — near-duplicate identifiers, typo'd exact strings, out-of-domain
-jargon — as a versioned `v3` dataset, then re-running the mode comparison.
+Build a calibration split containing identifier probes, so the weighted-RRF experiment can be
+run without touching the test split. Until that exists, hybrid's justification remains
+robustness rather than accuracy, and the README says so.
 
 ## Verification commands
 

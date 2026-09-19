@@ -1,0 +1,30 @@
+Meridian Logistics Operations Onboarding
+
+Welcome to hub operations. This guide is plain text on purpose: it is printed and pinned in
+the crew room, and it must remain readable without any formatting.
+
+Your first week
+
+You will shadow a floor supervisor for three shifts before taking an independent station.
+During shadowing you are expected to learn the intake door controls, the staging belt stop
+switches, and the exception lane procedure. You are not expected to memorise route tables,
+because route assignment is handled by the dispatch system.
+
+Safety
+
+Never reach across a moving belt. Every belt has a stop switch within two metres of any
+working position, and using it is always the correct first response to a jam. Report every
+stop switch activation to the supervisor, even when the jam clears immediately, because
+repeated activations at the same position indicate a mechanical fault.
+
+Reporting
+
+Shift notes are entered before you leave the floor, not afterwards from memory. A shift note
+records exception lane volume, any belt stoppages, and crew changes. Supervisors review the
+previous shift notes during handover.
+
+Who to ask
+
+Questions about equipment go to the floor supervisor. Questions about pay, leave, or
+scheduling go to the hub administrator, who is not on the floor and is reached through the
+crew room terminal.
