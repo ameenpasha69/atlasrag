@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AtlasRAG</title>
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+
+<header>
+  <div class="bar">
+    <h1>AtlasRAG <span>hybrid retrieval · verified citations · abstention</span></h1>
+    <div id="status"><span class="pill">loading…</span></div>
+  </div>
+</header>
+
+<main>
+  <div>
+    <section>
+      <h2>Ingest</h2>
+      <input type="file" id="files" multiple accept=".txt,.md,.markdown">
+      <div class="row" style="margin-top:10px">
+        <button id="upload-btn">Upload</button>
+        <button id="reindex-btn" class="secondary" title="Drop every derived index and rebuild from the registry">Rebuild indexes</button>
+      </div>
+      <div id="ingest-results"></div>
+      <p class="hint">Only .txt, .md and .markdown are supported. Anything else is rejected with a reason.</p>
+    </section>
+
+    <section>
+      <h2>Documents (<span id="doc-count">0</span>)</h2>
+      <div id="documents"><p class="empty">Nothing indexed yet.</p></div>
+    </section>
+  </div>
+
+  <div>
+    <section>
+      <h2>Query</h2>
+      <textarea id="query" placeholder="e.g. what serial is stamped on the calibration reference unit"></textarea>
+
+      <label>Retrieval mode</label>
+      <div class="modes">
+        <label><input type="radio" name="mode" value="bm25"><span>BM25</span></label>
+        <label><input type="radio" name="mode" value="dense"><span>Dense</span></label>
+        <label><input type="radio" name="mode" value="hybrid" checked><span>Hybrid (RRF)</span></label>
+      </div>
+
+      <div class="row" style="margin-top:12px">
+        <div style="flex:1 1 90px">
+          <label for="topk">top&nbsp;k</label>
+          <input type="number" id="topk" value="5" min="1" max="50">
+        </div>
+        <div style="flex:1 1 90px">
+          <label for="rrfk">RRF k</label>
+          <input type="number" id="rrfk" value="60" min="1" max="1000">
+        </div>
+        <div style="flex:2 1 150px">
+          <label for="title-filter">Title contains</label>
+          <input type="text" id="title-filter" placeholder="any">
+        </div>
+        <div style="flex:2 1 150px">
+          <label for="media-filter">Media type</label>
+          <select id="media-filter">
+            <option value="">any</option>
+            <option value="text/markdown">text/markdown</option>
+            <option value="text/plain">text/plain</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:14px">
+        <button id="search-btn">Search</button>
+        <button id="answer-btn" class="secondary">Ask (grounded)</button>
+      </div>
+    </section>
+
+    <section id="output-section">
+      <h2>Results</h2>
+      <div id="output"><p class="empty">Run a search or ask a question.</p></div>
+    </section>
+  </div>
+</main>
+
+<dialog id="doc-modal">
+  <div class="modal-head">
+    <h3 id="modal-title">Document</h3>
+    <button class="secondary" id="modal-close">Close</button>
+  </div>
+  <div class="modal-body">
+    <div id="modal-meta" class="doc-meta"></div>
+    <div id="modal-text" class="doctext"></div>
+  </div>
+</dialog>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

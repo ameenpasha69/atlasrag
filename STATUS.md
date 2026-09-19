@@ -1,21 +1,24 @@
 # AtlasRAG — Status
 
-Updated: 2026-09-19 · Milestones 1–2 executed · Milestone 6 (API/UI) not started
+Updated: 2026-09-19 · Milestones 1, 2 and 6 executed
 
 A capability is `VERIFIED` only if a command in [EVIDENCE.md](EVIDENCE.md) produced that
 result on this machine. Nothing here is aspirational.
 
 ## Current state
 
-Local retrieval, citation and abstention pipeline runs end to end from the CLI. Retrieval has
-been evaluated against version-controlled judgments. There is **no HTTP API and no web UI yet**,
-so the project does not yet meet its own definition of done.
+The full path — upload, index, search, ask, cite, abstain, delete, rebuild — runs end to end
+through the CLI, the HTTP API and the web interface, and has been driven in a real browser.
+Retrieval is evaluated against version-controlled judgments.
+
+Still outstanding against the definition of done: the optional LLM answer provider, PDF/HTML
+ingestion, container packaging, and any performance measurement at all.
 
 ## Feature status
 
 | Feature | Status | Evidence |
 |---|---|---|
-| Deterministic ids (document + chunk) | VERIFIED | 110-test suite; two independent DBs produce identical ids |
+| Deterministic ids (document + chunk) | VERIFIED | 135-test suite; two independent DBs produce identical ids |
 | Offset-exact chunking | VERIFIED | every chunk asserts `text == doc[start:end]` |
 | Idempotent re-ingestion | VERIFIED | second ingest returns `unchanged`, counts unmoved |
 | Duplicate-content detection | VERIFIED | renamed copy returns `duplicate_content` |
@@ -33,11 +36,15 @@ so the project does not yet meet its own definition of done.
 | Injected-instruction filtering | VERIFIED | both adversarial queries abstain; held-out q22 generalised |
 | Evaluation harness + metrics | VERIFIED | executed; see EVALUATION.md |
 | Abstention calibration | VERIFIED | 264-point sweep, F1 0.833 on calibration |
-| Lint / format / strict types | VERIFIED | ruff clean, mypy strict clean on 47 files |
+| Lint / format / strict types | VERIFIED | ruff clean, mypy strict clean on 49 files |
 | Extractive answering | VERIFIED *with a measured limitation* | fails paraphrased questions — see below |
 | `OUT_OF_SCOPE` abstention reason | **UNREACHABLE** | calibrated floors are 0.0; see EVALUATION.md §2 |
-| HTTP API | NOT STARTED | — |
-| Web UI | NOT STARTED | — |
+| HTTP API (8 routes + OpenAPI) | VERIFIED | 25 end-to-end HTTP tests |
+| Web UI | VERIFIED | driven in a browser; every control exercised |
+| Upload rejection surfaced in UI | VERIFIED | reason shown per file |
+| Citation → highlighted source | VERIFIED | modal marks the exact cited span |
+| Injected text flagged in results | VERIFIED | badge shown; passage stays searchable |
+| Mobile layout | VERIFIED | 375×812, no horizontal overflow |
 | LLM answer provider | NOT STARTED | — |
 | PDF / HTML ingestion | NOT STARTED | — |
 | Container packaging | NOT STARTED | — |
@@ -70,6 +77,8 @@ so the project does not yet meet its own definition of done.
 7. **Dense embeddings are not bit-reproducible** across BLAS or batch-size changes. Dense tests
    use tolerance-based assertions; only ids and BM25 are bit-exact.
 8. **No concurrency, latency or memory measurements exist.** No performance claim is made.
+9. **The API has no authentication, rate limiting or request-size cap.** Bind it to localhost.
+   See SECURITY.md.
 
 ## Failed experiments and corrections
 
@@ -83,8 +92,10 @@ so the project does not yet meet its own definition of done.
 
 ## Next smallest step
 
-Milestone 6: FastAPI routes (`/documents`, `/search`, `/answer`, `/health`, `/ready`) over the
-existing service, then the UI. The service layer already exposes everything the routes need.
+Milestone 5, first experiment: build the evidence that would justify hybrid fusion. The current
+dataset cannot distinguish it from dense alone, so the next step is adding query types where
+dense is expected to fail — near-duplicate identifiers, typo'd exact strings, out-of-domain
+jargon — as a versioned `v3` dataset, then re-running the mode comparison.
 
 ## Verification commands
 
@@ -97,4 +108,5 @@ rm -rf var && uv run atlasrag ingest fixtures/corpus/v1
 uv run atlasrag stats
 uv run atlasrag calibrate
 uv run atlasrag evaluate --split test --k 5 --dataset-version v2
+uv run uvicorn atlasrag.api.app:app --port 8077   # then open http://127.0.0.1:8077/
 ```

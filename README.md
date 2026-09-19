@@ -10,8 +10,9 @@ provider contains no language model at all.
 > [EVIDENCE.md](EVIDENCE.md) produced that result. Current capabilities and — just as
 > importantly — current limitations are in [STATUS.md](STATUS.md).
 
-**Status: Milestones 1–2 executed. There is no HTTP API and no web UI yet**, so the project does
-not yet meet its own definition of done.
+**Status: Milestones 1, 2 and 6 executed.** CLI, HTTP API and web interface all work against
+the same service layer. Not yet done: optional LLM answering, PDF/HTML ingestion, container
+packaging, and any performance measurement.
 
 ---
 
@@ -76,6 +77,30 @@ uv run atlasrag answer "how long are dispatch logs retained"   # abstains: sourc
 uv run atlasrag answer "what is the melting point of tungsten" # abstains: not in corpus
 ```
 
+## API and web interface
+
+```bash
+uv run uvicorn atlasrag.api.app:app --port 8077
+```
+
+Open <http://127.0.0.1:8077/> for the interface, or `/docs` for the generated OpenAPI schema.
+
+| Route | Purpose |
+|---|---|
+| `POST /documents` | upload one or more files; per-file status and rejection reason |
+| `GET /documents` · `GET /documents/{id}` · `DELETE /documents/{id}` | browse, inspect, remove |
+| `POST /search` | retrieve with full per-retriever rank, raw score and RRF contribution |
+| `POST /answer` | grounded answer with validated citations, or a structured abstention |
+| `POST /reindex` | drop and rebuild every derived index from the registry |
+| `GET /health` · `GET /ready` | liveness (is the process up) vs readiness (are the indexes usable) |
+
+The interface has no decorative controls: every button calls a real endpoint. It shows the RRF
+contribution table per hit, opens a citation to the highlighted source span, flags passages
+containing instruction-like text, and displays abstentions with their reason.
+
+> The API has no authentication, rate limiting or request-size cap. Bind it to localhost.
+> See [SECURITY.md](SECURITY.md).
+
 ## Evaluation
 
 ```bash
@@ -94,7 +119,8 @@ uv run mypy
 uv run pytest -q
 ```
 
-Last executed: ruff clean · mypy strict clean (47 files) · 110 tests passed.
+Last executed: ruff clean · mypy strict clean (49 files) · 135 tests passed
+(unit, integration and end-to-end HTTP).
 
 ## Architecture
 
@@ -129,8 +155,12 @@ torch. Concrete adapters are wired in `service.py` and nowhere else.
 ## Not supported
 
 No PDF, HTML, OCR, scanned documents, table extraction or layout understanding. No
-authentication, multi-tenancy or compliance claim. No performance claim — no latency or
-throughput measurement has been taken.
+authentication, multi-tenancy or compliance claim. No container image. No performance claim —
+no latency, throughput or memory measurement has been taken.
+
+The prompt-injection filter is a documented heuristic, not a guarantee; what is structural is
+that the default provider has no generation step and therefore cannot follow an instruction at
+all. [SECURITY.md](SECURITY.md) is explicit about the difference.
 
 ## License
 

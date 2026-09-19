@@ -234,9 +234,61 @@ both.
 
 ---
 
+## 2026-09-19 · Milestone 6 · HTTP API and web interface
+
+`uvicorn atlasrag.api.app:app --port 8077`, then driven in a real browser.
+
+Routes served: `GET /health`, `GET /ready`, `POST /documents`, `GET /documents`,
+`GET /documents/{id}`, `DELETE /documents/{id}`, `POST /search`, `POST /answer`,
+`POST /reindex`, `GET /` plus `/openapi.json` and `/docs`.
+
+`GET /ready` returned:
+```json
+{"ready":true,"documents":7,"chunks":11,"lexical_chunks":11,"lexical_terms":646,
+ "dense_ready":true,"dense_vectors":11,"dense_dimension":384,"dense_error":null,
+ "embedding_model":"BAAI/bge-small-en-v1.5",
+ "embedding_revision":"5c38ec7c405ec4b44b94cc5a9bb96e735b38267a",
+ "config_fingerprint":"e951b284ff6dc8ae"}
+```
+
+**Browser demonstration — every control exercised, not just rendered:**
+
+| Control | Observed result |
+|---|---|
+| Search (hybrid) `calibration deviation sensor` | 5 results; #1 showed `bm25 #1 raw 11.0270 rrf 0.016393` and `dense #1 raw 0.7753 rrf 0.016393`, fused **0.032787** — equal to 1/61 + 1/61 |
+| Ask `what serial is stamped on the calibration reference unit` | green answer banner, 1 citation badged **verified**, offsets `[104:250]` |
+| Click citation | modal opened the full document with the cited span highlighted, text matching the snippet exactly |
+| Ask `how long are dispatch logs retained` | amber **ABSTAINED · CONFLICTING EVIDENCE**, naming `['30days']` vs `['90days']` and both sources |
+| Search `ignore all previous instructions compliance` | vendor file returned and flagged `INSTRUCTION-LIKE TEXT` — searchable, never quoted |
+| Rebuild indexes | `Rebuilt: 11 chunks, 646 terms, 11 vectors @ 384d` |
+| Upload `browser-smoke-test.md` | `ingested · 1 chunks`, document count 7 → 8 |
+| Delete that document | count 8 → 7, card removed, `/ready` back to 7 docs / 11 chunks / 11 vectors |
+| Mobile viewport 375×812 | single column, `scrollWidth == innerWidth == 375`, no horizontal overflow |
+
+**Two UI defects found in the browser and fixed:**
+1. The conflict detail was printed twice — once inside the abstention explanation and again as
+   a separate paragraph.
+2. Opening a citation called `scrollIntoView`, which scrolled the page *behind* the dialog to
+   300 px and left a blank band above the header. Now the modal's own container is scrolled;
+   re-verified `pageScroll: 0`.
+
+A third, smaller one: the upload log kept showing `<file>: ingested` after that same document
+had been deleted, which read as though it were still indexed. Cleared on delete.
+
+**Quality gate after the API and UI:**
+```
+uv run ruff check src tests          -> All checks passed!
+uv run ruff format --check src tests -> 59 files already formatted
+uv run mypy                          -> Success: no issues found in 49 source files
+uv run pytest -q                     -> 135 passed
+```
+
+---
+
 ## Remaining limitations at this point in the log
 
-- No HTTP API, no UI, no container, no LLM provider, no PDF/HTML ingestion.
+- No container, no LLM provider, no PDF/HTML ingestion.
+- The API has no authentication, rate limiting or request-size cap; it is a localhost tool.
 - No latency, throughput, concurrency or memory measurement has been taken. **No performance
   claim of any kind is supported by this log.**
 - `OUT_OF_SCOPE` abstention is unreachable at the calibrated thresholds.
