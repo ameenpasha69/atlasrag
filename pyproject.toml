@@ -1,0 +1,80 @@
+[project]
+name = "atlasrag"
+version = "0.1.0"
+description = "Evidence-driven hybrid retrieval and grounded answering with mandatory citations and abstention."
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+license = { text = "MIT" }
+
+dependencies = [
+    "pydantic>=2.9,<3",
+    "pydantic-settings>=2.5,<3",
+    "numpy>=2.1,<3",
+    "fastapi>=0.115,<0.120",
+    "uvicorn[standard]>=0.30,<0.40",
+    "jinja2>=3.1,<4",
+    "python-multipart>=0.0.12,<0.1",
+    "torch>=2.6,<3",
+    "transformers>=4.44,<5",
+    "safetensors>=0.4,<1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3,<9",
+    "httpx>=0.27,<1",
+    "ruff>=0.7,<1",
+    "mypy>=1.11,<2",
+]
+
+[project.scripts]
+atlasrag = "atlasrag.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/atlasrag"]
+
+# Force the CPU-only torch build. The baseline is deliberately CPU-only:
+# see DECISIONS.md D-004 (determinism + 5.9 GB RAM budget).
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "requires_model: test needs the embedding model weights present locally",
+]
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF", "ANN", "N", "C4", "PTH"]
+ignore = ["ANN401"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["ANN"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+mypy_path = "src"
+packages = ["atlasrag"]
+warn_unreachable = true
+disallow_any_generics = true
+plugins = []
+
+[[tool.mypy.overrides]]
+module = ["transformers.*", "torch.*"]
+ignore_missing_imports = true

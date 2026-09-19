@@ -1,0 +1,28 @@
+"""Explicit stopword list used for answer support scoring only.
+
+Deliberately *not* used when building the BM25 index: there, IDF already discounts common
+words, and removing them would break exact-phrase-ish lexical matching. Here the problem is
+different — a sentence that happens to contain "how" and "are" must not look like it answers
+a question, so common words are excluded from support entirely.
+
+Kept short, explicit and version-controlled rather than pulled from a library, so that a
+change to answer behaviour is always visible in a diff.
+"""
+
+from __future__ import annotations
+
+STOPWORDS: frozenset[str] = frozenset(
+    """
+a about after all also am an and any are as at be because been before being
+between both but by can cannot could did do does doing done down during each
+few for from further had has have having he her here hers him his how i if in
+into is it its itself just me more most my no nor not of off on once only or
+other our out over own same she should so some such than that the their them
+then there these they this those through to too under until up very was we
+were what when where which while who whom why will with would you your
+""".split()
+)
+
+
+def content_terms(terms: set[str]) -> set[str]:
+    return {t for t in terms if t not in STOPWORDS}
